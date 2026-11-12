@@ -85,3 +85,418 @@ SELECT COUNT(*) FILTER (WHERE account_id IS NULL) AS missing_account_id, COUNT(*
 SELECT COUNT(*) AS usage_events, COUNT(*) FILTER (WHERE usage_count < 0 OR usage_duration_secs < 0 OR error_count < 0) AS negative_metrics, COUNT(*) FILTER (WHERE usage_date IS NULL) AS missing_usage_dates FROM feature_usage;
 -- Q30: Support ticket quality
 SELECT COUNT(*) AS tickets, COUNT(*) FILTER (WHERE closed_at < submitted_at) AS closed_before_opened, COUNT(*) FILTER (WHERE resolution_time_hours < 0 OR first_response_time_minutes < 0) AS negative_response_metrics FROM support_tickets;
+
+
+-- ============================================================
+-- PROJECT 20: SaaS Revenue & Subscription Analytics
+-- DAY 2: Revenue & Subscription Performance
+-- Queries 31–45
+-- Reporting snapshot: 2024-12-31
+-- ============================================================
+
+-- NOTE:
+-- Subscription rows may overlap for the same account.
+-- Snapshot MRR below is the sum of qualifying subscription
+-- records, not necessarily deduplicated account-level MRR.
+-- Historical sums are not recognized accounting revenue.
+
+
+-- ============================================================
+-- QUERY 31: Total Recorded Subscription Revenue
+-- ============================================================
+
+SELECT
+    COUNT(*) AS total_subscription_records,
+    COUNT(DISTINCT account_id) AS total_accounts,
+    SUM(mrr_amount) AS total_recorded_mrr,
+    ROUND(AVG(mrr_amount), 2) AS avg_subscription_mrr,
+    SUM(arr_amount) AS total_recorded_arr,
+    ROUND(AVG(arr_amount), 2) AS avg_subscription_arr
+FROM subscriptions;
+
+
+-- ============================================================
+-- QUERY 32: Active Subscription Snapshot (2024-12-31)
+-- ============================================================
+
+WITH snapshot AS (
+    SELECT *
+    FROM subscriptions
+    WHERE start_date <= DATE '2024-12-31'
+      AND (
+          end_date IS NULL
+          OR end_date > DATE '2024-12-31'
+      )
+      AND COALESCE(churn_flag, FALSE) = FALSE
+      AND COALESCE(is_trial, FALSE) = FALSE
+)
+SELECT
+    COUNT(*) AS active_paid_subscription_records,
+    COUNT(DISTINCT account_id) AS active_paid_accounts,
+    SUM(mrr_amount) AS snapshot_mrr,
+    SUM(arr_amount) AS snapshot_arr,
+    ROUND(AVG(mrr_amount), 2) AS avg_active_subscription_mrr,
+    ROUND(
+        SUM(mrr_amount) * 1.0 /
+        NULLIF(COUNT(DISTINCT account_id), 0),
+        2
+    ) AS mrr_per_active_account
+FROM snapshot;
+
+
+-- ============================================================
+-- QUERY 33: Monthly Subscription Starts and Recorded MRR
+-- ============================================================
+
+SELECT
+    DATE_TRUNC('month', start_date)::DATE AS start_month,
+    COUNT(*) AS new_subscription_records,
+    COUNT(DISTINCT account_id) AS accounts_starting_subscriptions,
+    SUM(mrr_amount) AS recorded_mrr_from_starts,
+    ROUND(AVG(mrr_amount), 2) AS avg_new_subscription_mrr
+FROM subscriptions
+GROUP BY 1
+ORDER BY 1;
+
+
+-- ============================================================
+-- QUERY 34: Monthly Active Paid MRR Trend
+-- ============================================================
+
+WITH months AS (
+    SELECT
+        month_end::DATE AS snapshot_date
+    FROM generate_series(
+        DATE '2023-01-31',
+        DATE '2024-12-31',
+        INTERVAL '1 month'
+    ) AS t(month_end)
+),
+active_records AS (
+    SELECT
+        m.snapshot_date,
+        s.subscription_id,
+        s.account_id,
+        s.mrr_amount
+    FROM months m
+    JOIN subscriptions s
+      ON s.start_date <= m.snapshot_date
+     AND (
+         s.end_date IS NULL
+         OR s.end_date > m.snapshot_date
+     )
+    WHERE COALESCE(s.churn_flag, FALSE) = FALSE
+      AND COALESCE(s.is_trial, FALSE) = FALSE
+)
+SELECT
+    snapshot_date,
+    COUNT(*) AS active_paid_subscription_records,
+    COUNT(DISTINCT account_id) AS active_paid_accounts,
+    SUM(mrr_amount) AS active_record_mrr,
+    ROUND(
+        SUM(mrr_amount) -
+        LAG(SUM(mrr_amount)) OVER (
+            ORDER BY snapshot_date
+        ),
+        2
+    ) AS mom_mrr_change
+FROM active_records
+GROUP BY snapshot_date
+ORDER BY snapshot_date;
+
+
+-- ============================================================
+-- QUERY 35: Revenue by Subscription Plan Tier
+-- ============================================================
+
+SELECT
+    plan_tier,
+    COUNT(*) AS subscription_records,
+    COUNT(DISTINCT account_id) AS distinct_accounts,
+    SUM(mrr_amount) AS recorded_mrr,
+    SUM(arr_amount) AS recorded_arr,
+    ROUND(AVG(mrr_amount), 2) AS avg_mrr,
+    ROUND(
+        100.0 * SUM(mrr_amount) /
+        NULLIF(
+            (SELECT SUM(mrr_amount) FROM subscriptions),
+            0
+        ),
+        2
+    ) AS pct_recorded_mrr
+FROM subscriptions
+GROUP BY plan_tier
+ORDER BY recorded_mrr DESC;
+
+
+-- ============================================================
+-- QUERY 36: Active Paid Revenue by Plan Tier
+-- ============================================================
+
+SELECT
+    plan_tier,
+    COUNT(*) AS active_subscription_records,
+    COUNT(DISTINCT account_id) AS active_accounts,
+    SUM(mrr_amount) AS active_record_mrr,
+    SUM(arr_amount) AS active_record_arr,
+    ROUND(AVG(mrr_amount), 2) AS avg_active_mrr
+FROM subscriptions
+WHERE start_date <= DATE '2024-12-31'
+  AND (
+      end_date IS NULL
+      OR end_date > DATE '2024-12-31'
+  )
+  AND COALESCE(churn_flag, FALSE) = FALSE
+  AND COALESCE(is_trial, FALSE) = FALSE
+GROUP BY plan_tier
+ORDER BY active_record_mrr DESC;
+
+
+-- ============================================================
+-- QUERY 37: Revenue by Billing Frequency
+-- ============================================================
+
+SELECT
+    billing_frequency,
+    COUNT(*) AS subscription_records,
+    COUNT(DISTINCT account_id) AS distinct_accounts,
+    SUM(mrr_amount) AS recorded_mrr,
+    SUM(arr_amount) AS recorded_arr,
+    ROUND(AVG(mrr_amount), 2) AS avg_mrr,
+    ROUND(
+        100.0 * COUNT(*) /
+        SUM(COUNT(*)) OVER (),
+        2
+    ) AS pct_subscription_records
+FROM subscriptions
+GROUP BY billing_frequency
+ORDER BY recorded_mrr DESC;
+
+
+-- ============================================================
+-- QUERY 38: Trial vs Paid Subscription Performance
+-- ============================================================
+
+SELECT
+    CASE
+        WHEN is_trial = TRUE THEN 'Trial'
+        WHEN is_trial = FALSE THEN 'Paid'
+        ELSE 'Unknown'
+    END AS subscription_type,
+    COUNT(*) AS subscription_records,
+    COUNT(DISTINCT account_id) AS distinct_accounts,
+    SUM(mrr_amount) AS recorded_mrr,
+    ROUND(AVG(mrr_amount), 2) AS avg_mrr,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flag_records
+FROM subscriptions
+GROUP BY 1
+ORDER BY subscription_records DESC;
+
+
+-- ============================================================
+-- QUERY 39: Upgrade and Downgrade Distribution
+-- ============================================================
+
+SELECT
+    CASE
+        WHEN upgrade_flag = TRUE
+         AND downgrade_flag = TRUE
+            THEN 'Both Upgrade and Downgrade'
+        WHEN upgrade_flag = TRUE
+            THEN 'Upgrade'
+        WHEN downgrade_flag = TRUE
+            THEN 'Downgrade'
+        ELSE 'No Change'
+    END AS change_category,
+    COUNT(*) AS subscription_records,
+    COUNT(DISTINCT account_id) AS distinct_accounts,
+    SUM(mrr_amount) AS recorded_mrr,
+    ROUND(AVG(mrr_amount), 2) AS avg_mrr
+FROM subscriptions
+GROUP BY 1
+ORDER BY subscription_records DESC;
+
+
+-- ============================================================
+-- QUERY 40: Revenue by Auto-Renewal Status
+-- ============================================================
+
+SELECT
+    auto_renew_flag,
+    COUNT(*) AS subscription_records,
+    COUNT(DISTINCT account_id) AS distinct_accounts,
+    SUM(mrr_amount) AS recorded_mrr,
+    ROUND(AVG(mrr_amount), 2) AS avg_mrr,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flag_records,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS churn_flag_percentage
+FROM subscriptions
+GROUP BY auto_renew_flag
+ORDER BY recorded_mrr DESC;
+
+
+-- ============================================================
+-- QUERY 41: Revenue by Customer Industry
+-- ============================================================
+
+SELECT
+    a.industry,
+    COUNT(s.subscription_id) AS subscription_records,
+    COUNT(DISTINCT a.account_id) AS distinct_accounts,
+    SUM(s.mrr_amount) AS recorded_mrr,
+    ROUND(AVG(s.mrr_amount), 2) AS avg_mrr,
+    SUM(s.arr_amount) AS recorded_arr
+FROM subscriptions s
+JOIN accounts a
+  ON s.account_id = a.account_id
+GROUP BY a.industry
+ORDER BY recorded_mrr DESC;
+
+
+-- ============================================================
+-- QUERY 42: Revenue by Customer Country
+-- ============================================================
+
+SELECT
+    a.country,
+    COUNT(s.subscription_id) AS subscription_records,
+    COUNT(DISTINCT a.account_id) AS distinct_accounts,
+    SUM(s.mrr_amount) AS recorded_mrr,
+    ROUND(AVG(s.mrr_amount), 2) AS avg_mrr
+FROM subscriptions s
+JOIN accounts a
+  ON s.account_id = a.account_id
+GROUP BY a.country
+ORDER BY recorded_mrr DESC;
+
+
+-- ============================================================
+-- QUERY 43: Top 20 Accounts by Recorded Subscription MRR
+-- ============================================================
+
+SELECT
+    a.account_id,
+    a.account_name,
+    a.industry,
+    a.country,
+    COUNT(s.subscription_id) AS subscription_records,
+    SUM(s.mrr_amount) AS recorded_mrr,
+    SUM(s.arr_amount) AS recorded_arr,
+    ROUND(AVG(s.mrr_amount), 2) AS avg_subscription_mrr
+FROM accounts a
+JOIN subscriptions s
+  ON a.account_id = s.account_id
+GROUP BY
+    a.account_id,
+    a.account_name,
+    a.industry,
+    a.country
+ORDER BY recorded_mrr DESC
+LIMIT 20;
+
+
+-- ============================================================
+-- QUERY 44: Revenue Concentration Among Top Accounts
+-- ============================================================
+
+WITH account_revenue AS (
+    SELECT
+        account_id,
+        SUM(mrr_amount) AS recorded_mrr
+    FROM subscriptions
+    GROUP BY account_id
+),
+ranked_accounts AS (
+    SELECT
+        account_id,
+        recorded_mrr,
+        ROW_NUMBER() OVER (
+            ORDER BY recorded_mrr DESC, account_id
+        ) AS revenue_rank
+    FROM account_revenue
+)
+SELECT
+    COUNT(*) AS total_accounts,
+    SUM(recorded_mrr) AS total_recorded_mrr,
+    SUM(
+        CASE WHEN revenue_rank <= 10
+             THEN recorded_mrr ELSE 0 END
+    ) AS top_10_recorded_mrr,
+    ROUND(
+        100.0 *
+        SUM(
+            CASE WHEN revenue_rank <= 10
+                 THEN recorded_mrr ELSE 0 END
+        ) / NULLIF(SUM(recorded_mrr), 0),
+        2
+    ) AS top_10_revenue_share_pct,
+    ROUND(
+        100.0 *
+        SUM(
+            CASE WHEN revenue_rank <= 50
+                 THEN recorded_mrr ELSE 0 END
+        ) / NULLIF(SUM(recorded_mrr), 0),
+        2
+    ) AS top_50_revenue_share_pct
+FROM ranked_accounts;
+
+
+-- ============================================================
+-- QUERY 45: Subscription Overlap and Revenue Quality Check
+-- ============================================================
+
+WITH active_snapshot AS (
+    SELECT
+        account_id,
+        subscription_id,
+        plan_tier,
+        mrr_amount
+    FROM subscriptions
+    WHERE start_date <= DATE '2024-12-31'
+      AND (
+          end_date IS NULL
+          OR end_date > DATE '2024-12-31'
+      )
+      AND COALESCE(churn_flag, FALSE) = FALSE
+      AND COALESCE(is_trial, FALSE) = FALSE
+),
+account_summary AS (
+    SELECT
+        account_id,
+        COUNT(*) AS active_subscription_records,
+        COUNT(DISTINCT plan_tier) AS active_plan_tiers,
+        SUM(mrr_amount) AS combined_active_mrr
+    FROM active_snapshot
+    GROUP BY account_id
+)
+SELECT
+    COUNT(*) AS active_accounts,
+    SUM(
+        CASE WHEN active_subscription_records > 1
+             THEN 1 ELSE 0 END
+    ) AS accounts_with_multiple_active_records,
+    MAX(active_subscription_records)
+        AS max_active_records_per_account,
+    SUM(
+        CASE WHEN active_plan_tiers > 1
+             THEN 1 ELSE 0 END
+    ) AS accounts_with_multiple_active_tiers,
+    SUM(
+        CASE WHEN active_subscription_records > 1
+             THEN combined_active_mrr ELSE 0 END
+    ) AS mrr_from_multi_record_accounts,
+    ROUND(
+        100.0 *
+        SUM(
+            CASE WHEN active_subscription_records > 1
+                 THEN combined_active_mrr ELSE 0 END
+        ) / NULLIF(SUM(combined_active_mrr), 0),
+        2
+    ) AS multi_record_mrr_share_pct
+FROM account_summary;
