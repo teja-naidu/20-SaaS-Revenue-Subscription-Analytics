@@ -654,3 +654,774 @@ The monthly revenue trend also requires corrected calendar month-end snapshots.
 Overall, Day 2 establishes a foundation for SaaS revenue segmentation, subscription performance reporting, and future churn and retention analysis.
 
 **Day 2 Status:** 15 queries executed; exploratory insights documented; revenue validation limitations identified.
+
+
+---
+
+# Day 3 – Customer Churn & Retention Analytics
+
+## Objective
+
+Analyze SaaS customer churn events, subscription churn indicators, churn reasons, customer segments, subscription tenure, auto-renewal behavior, account-level churn exposure, and churn-related recurring revenue.
+
+**Dataset:** RavenStack SaaS Analytics  
+**SQL Engine:** DuckDB  
+**Queries:** 46–60  
+**Analysis Period:** January 2023 – December 2024  
+**Subscription Records:** 5,000  
+**Customer Accounts:** 500  
+**Churn Events:** 600
+
+### Important Metric Definitions
+
+- **Churn Event:** An individual record in the `churn_events` table.
+- **Churn-Flagged Subscription:** A record in `subscriptions` where `churn_flag = TRUE`.
+- **Churn-Flag Percentage:** Churn-flagged subscription records divided by total subscription records in the relevant segment.
+- **Churn-Flagged MRR:** Sum of recorded MRR associated with churn-flagged subscriptions.
+- **Account Churn Exposure:** Whether an account has at least one churn-flagged subscription record or a recorded churn event.
+
+These metrics are descriptive and should not automatically be interpreted as monthly customer churn rates, realized revenue loss, or confirmed customer departures.
+
+---
+
+## 1. Executive Summary
+
+Day 3 successfully executed 15 SQL queries to examine subscription churn patterns and customer retention indicators.
+
+### Key Performance Indicators
+
+| KPI | Result |
+|---|---:|
+| Total subscription records | 5,000 |
+| Total customer accounts | 500 |
+| Churn-flagged subscription records | 486 |
+| Non-churn-flagged subscription records | 4,514 |
+| Subscription churn-flag percentage | 9.72% |
+| Churn-flagged MRR | $1,179,139 |
+| Total recorded churn events | 600 |
+| Unique churn event IDs | 600 |
+| Accounts with recorded churn events | 352 |
+| Earliest churn event | January 25, 2023 |
+| Latest churn event | December 31, 2024 |
+| Highest churn-event month | December 2024 |
+| December 2024 churn events | 117 |
+| Most common churn reason | Features |
+| Accounts with any subscription churn flag | 312 |
+| Accounts with both churn flags and events | 227 |
+
+### Executive Findings
+
+1. Approximately 9.72% of subscription records are marked as churned.
+2. The churn-event table contains 600 unique events affecting 352 accounts.
+3. Recorded churn-event volume increased substantially toward the end of 2024.
+4. Feature limitations, support issues, and budget constraints are the most frequently recorded churn reasons.
+5. Enterprise subscriptions account for the largest churn-associated MRR.
+6. Short-tenure subscription records have higher churn-flag percentages than longer-tenure records.
+7. Subscription churn flags and account-level churn events do not fully align.
+8. Churn-related revenue exposure requires further validation before being classified as actual lost MRR.
+
+---
+
+## 2. Detailed SQL Findings
+
+### Query 46 – Overall Subscription Churn Overview
+
+**Results**
+
+| Metric | Value |
+|---|---:|
+| Total subscription records | 5,000 |
+| Total accounts | 500 |
+| Churn-flagged records | 486 |
+| Non-churn-flagged records | 4,514 |
+| Churn-flag percentage | 9.72% |
+| Churn-flagged MRR | $1,179,139 |
+
+**Key Findings**
+
+- The dataset contains 486 churn-flagged subscription records.
+- The remaining 4,514 records are not churn-flagged.
+- Churn-flagged subscriptions represent 9.72% of all subscription records.
+- Approximately $1.18 million in recorded MRR is associated with churn-flagged subscriptions.
+- Churn-flagged MRR represents approximately 10.40% of the $11.34 million total recorded subscription MRR identified in Day 2.
+
+**Business Interpretation**
+
+The dataset contains meaningful churn-related subscription exposure.
+
+However, the 9.72% metric is a record-level proportion across the dataset, not a monthly customer churn rate.
+
+Similarly, churn-flagged MRR is not necessarily revenue lost during a particular reporting period.
+
+**Business Recommendation**
+
+Establish separate definitions for subscription churn, customer churn, gross revenue churn, and net revenue retention.
+
+Use churn dates and period-specific revenue snapshots to calculate operational retention KPIs.
+
+---
+
+### Query 47 – Churn Event Summary
+
+**Results**
+
+| Metric | Value |
+|---|---:|
+| Total churn events | 600 |
+| Unique churn events | 600 |
+| Accounts with churn events | 352 |
+| Earliest churn date | January 25, 2023 |
+| Latest churn date | December 31, 2024 |
+
+**Key Findings**
+
+- All 600 churn event IDs are unique.
+- Churn events affect 352 distinct accounts.
+- Multiple churn events can belong to the same account.
+- Recorded churn activity spans nearly the entire dataset observation period.
+
+**Business Interpretation**
+
+The event table captures churn activity at the account level but does not directly identify the subscription associated with each event.
+
+Consequently, the 352 affected accounts should not be interpreted as 352 customers permanently lost.
+
+**Business Recommendation**
+
+Investigate repeat churn events, customer reactivation, and account subscription status following churn events.
+
+---
+
+### Query 48 – Monthly Churn Event Trend
+
+**Results**
+
+| Month | Churn Events | Affected Accounts |
+|---|---:|---:|
+| January 2023 | 1 | 1 |
+| March 2023 | 5 | 5 |
+| April 2023 | 3 | 3 |
+| May 2023 | 3 | 3 |
+| June 2023 | 5 | 5 |
+| July 2023 | 6 | 6 |
+| August 2023 | 7 | 6 |
+| September 2023 | 6 | 6 |
+| October 2023 | 10 | 10 |
+| November 2023 | 11 | 11 |
+| December 2023 | 16 | 16 |
+| January 2024 | 20 | 18 |
+| February 2024 | 10 | 10 |
+| March 2024 | 24 | 24 |
+| April 2024 | 25 | 23 |
+| May 2024 | 27 | 25 |
+| June 2024 | 40 | 38 |
+| July 2024 | 35 | 33 |
+| August 2024 | 42 | 40 |
+| September 2024 | 53 | 48 |
+| October 2024 | 66 | 60 |
+| November 2024 | 68 | 60 |
+| December 2024 | 117 | 96 |
+
+*February 2023 has no row in the original query output because no churn events were recorded for that month.*
+
+**Key Findings**
+
+- Recorded churn-event volume generally increased during the observation period.
+- December 2024 had the highest monthly event count, at 117.
+- December's churn events affected 96 distinct accounts.
+- November 2024 recorded 68 events affecting 60 accounts.
+- Event volume increased approximately 72.06% between November and December 2024.
+- Multiple events affected some accounts within individual months.
+
+**Business Interpretation**
+
+The rising number of churn events could reflect a growing subscription base, changing customer behavior, or both.
+
+Event counts alone do not establish that the churn rate increased.
+
+**Business Recommendation**
+
+Calculate monthly customer churn rates using a consistent opening active-customer population.
+
+Investigate the December 2024 event increase and compare it with customer acquisition and subscription growth.
+
+---
+
+### Query 49 – Churn Reasons Distribution
+
+**Results**
+
+| Churn Reason | Events | Affected Accounts | Share of Events |
+|---|---:|---:|---:|
+| Features | 114 | 104 | 19.00% |
+| Support | 104 | 95 | 17.33% |
+| Budget | 104 | 94 | 17.33% |
+| Unknown | 95 | 86 | 15.83% |
+| Competitor | 92 | 79 | 15.33% |
+| Pricing | 91 | 86 | 15.17% |
+
+**Key Findings**
+
+- Feature-related issues are the most frequently recorded churn reason.
+- Support issues and budget constraints are tied for second.
+- Features and support together account for 218 events, or 36.33% of all churn events.
+- Budget and pricing together account for 195 events, or 32.50%.
+- Approximately 15.83% of churn events have an unknown reason.
+
+**Business Interpretation**
+
+Product capabilities, customer support, and affordability appear repeatedly in recorded churn reasons.
+
+However, the reason distribution does not establish causality or the relative revenue impact of each reason.
+
+**Business Recommendation**
+
+- Review feature-related churn feedback with Product teams.
+- Investigate support-related churn and ticket resolution experiences.
+- Analyze budget and pricing objections by plan tier.
+- Improve churn-reason collection to reduce unknown classifications.
+
+---
+
+### Query 50 – Churn by Subscription Plan Tier
+
+**Results**
+
+| Plan Tier | Records | Churn-Flagged | Churn-Flag % | Churn-Flagged MRR |
+|---|---:|---:|---:|---:|
+| Enterprise | 1,723 | 172 | 9.98% | $926,345 |
+| Pro | 1,675 | 162 | 9.67% | $180,271 |
+| Basic | 1,602 | 152 | 9.49% | $72,523 |
+
+**Key Findings**
+
+- Enterprise has the highest churn-flag percentage at 9.98%.
+- Basic has the lowest at 9.49%.
+- The difference between Enterprise and Basic is 0.49 percentage points.
+- Enterprise contributes approximately 78.56% of all churn-flagged MRR.
+- Enterprise's churn-associated MRR is significantly higher because its subscription values are larger.
+
+**Business Interpretation**
+
+Enterprise is the largest churn-associated revenue exposure segment.
+
+However, the small differences in churn-flag percentages do not demonstrate a substantial difference in customer retention between tiers.
+
+**Business Recommendation**
+
+Prioritize Enterprise account reviews while measuring actual churn rates and realized revenue losses by plan tier.
+
+---
+
+### Query 51 – Churn by Billing Frequency
+
+**Results**
+
+| Billing Frequency | Records | Churn-Flagged | Churn-Flag % | Churn-Flagged MRR |
+|---|---:|---:|---:|---:|
+| Annual | 2,461 | 247 | 10.04% | $549,373 |
+| Monthly | 2,539 | 239 | 9.41% | $629,766 |
+
+**Key Findings**
+
+- Annual subscriptions have a churn-flag percentage of 10.04%.
+- Monthly subscriptions have a churn-flag percentage of 9.41%.
+- The observed difference is 0.63 percentage points.
+- Monthly subscriptions account for more churn-flagged MRR despite having fewer churn-flagged records.
+
+**Business Interpretation**
+
+The observed data does not support a conclusion that annual billing necessarily produces lower churn.
+
+Differences in subscription tenure, contract expiration, and plan composition may affect the results.
+
+**Business Recommendation**
+
+Compare renewal outcomes and cohort-based churn rates for annual and monthly subscriptions.
+
+---
+
+### Query 52 – Trial vs Paid Subscription Churn
+
+**Results**
+
+| Subscription Type | Records | Churn-Flagged | Churn-Flag % | Churn-Flagged MRR |
+|---|---:|---:|---:|---:|
+| Trial | 778 | 78 | 10.03% | $0 |
+| Paid | 4,222 | 408 | 9.66% | $1,179,139 |
+
+**Key Findings**
+
+- Trial subscriptions have a churn-flag percentage of 10.03%.
+- Paid subscriptions have a churn-flag percentage of 9.66%.
+- All churn-flagged MRR is associated with paid subscriptions.
+- Trial subscriptions have zero recorded MRR.
+
+**Business Interpretation**
+
+Trial abandonment and paid subscription churn are different lifecycle outcomes and should not automatically be combined.
+
+The dataset does not provide a trial-to-paid conversion rate through this query.
+
+**Business Recommendation**
+
+Track trial conversion, trial abandonment, paid churn, and reactivation separately.
+
+---
+
+### Query 53 – Churn by Customer Industry
+
+**Results**
+
+| Industry | Records | Accounts | Churn-Flagged | Churn-Flag % | Churn-Flagged MRR |
+|---|---:|---:|---:|---:|---:|
+| DevTools | 1,158 | 113 | 125 | 10.79% | $238,611 |
+| Cybersecurity | 1,008 | 100 | 103 | 10.22% | $279,062 |
+| HealthTech | 949 | 96 | 96 | 10.12% | $209,277 |
+| FinTech | 1,100 | 112 | 96 | 8.73% | $253,446 |
+| EdTech | 785 | 79 | 66 | 8.41% | $198,743 |
+
+**Key Findings**
+
+- DevTools has the highest churn-flag percentage at 10.79%.
+- EdTech has the lowest at 8.41%.
+- Cybersecurity has the largest churn-flagged MRR at $279,062.
+- FinTech follows with $253,446.
+- DevTools has the highest number of churn-flagged records, at 125.
+
+**Business Interpretation**
+
+Different industries exhibit different churn-associated subscription patterns.
+
+Industry rankings vary depending on whether churn is measured by record count, percentage, or associated MRR.
+
+**Business Recommendation**
+
+Develop industry-specific retention analysis using actual churn events, revenue exposure, customer tenure, and product usage.
+
+---
+
+### Query 54 – Churn by Customer Country
+
+**Results**
+
+| Country | Records | Churn-Flagged | Churn-Flag % | Churn-Flagged MRR |
+|---|---:|---:|---:|---:|
+| FR | 211 | 25 | 11.85% | $100,563 |
+| AU | 312 | 35 | 11.22% | $88,549 |
+| UK | 590 | 64 | 10.85% | $175,279 |
+| US | 2,961 | 288 | 9.73% | $645,721 |
+| CA | 217 | 21 | 9.68% | $43,327 |
+| DE | 211 | 20 | 9.48% | $44,111 |
+| IN | 498 | 33 | 6.63% | $81,589 |
+
+**Key Findings**
+
+- France has the highest churn-flag percentage at 11.85%.
+- India has the lowest at 6.63%.
+- The United States has the highest churn-flagged MRR at $645,721.
+- US subscriptions represent the largest absolute churn-associated revenue exposure.
+
+**Business Interpretation**
+
+The country with the highest churn-flag percentage is not necessarily the country with the greatest revenue exposure.
+
+**Business Recommendation**
+
+Monitor both churn frequency and revenue impact across markets, accounting for differences in customer composition and subscription tenure.
+
+---
+
+### Query 55 – Churn by Auto-Renewal Status
+
+**Results**
+
+| Auto-Renewal | Records | Churn-Flagged | Churn-Flag % | Churn-Flagged MRR |
+|---|---:|---:|---:|---:|
+| Enabled | 4,005 | 390 | 9.74% | $968,478 |
+| Disabled | 995 | 96 | 9.65% | $210,661 |
+
+**Key Findings**
+
+- Auto-renewal is enabled on 80.10% of subscription records.
+- Enabled subscriptions have a churn-flag percentage of 9.74%.
+- Disabled subscriptions have a churn-flag percentage of 9.65%.
+- The difference is only 0.09 percentage points.
+
+**Business Interpretation**
+
+The data does not establish a meaningful retention advantage for auto-renewal.
+
+Auto-renewal settings may also change during the subscription lifecycle.
+
+**Business Recommendation**
+
+Study renewal success, failed payments, cancellations, and contract expiration outcomes rather than relying solely on the churn flag.
+
+---
+
+### Query 56 – Subscription Tenure Distribution
+
+**Results**
+
+| Tenure Category | Subscription Records | Accounts | Average Tenure Days |
+|---|---:|---:|---:|
+| Less Than 1 Month | 1,038 | 353 | 12.95 |
+| 1–3 Months | 1,131 | 403 | 57.17 |
+| 3–6 Months | 1,075 | 386 | 131.36 |
+| 6–12 Months | 1,146 | 334 | 258.38 |
+| 12+ Months | 610 | 188 | 474.11 |
+
+**Key Findings**
+
+- The 6–12 month category contains the most records, at 1,146.
+- The 1–3 month category contains 1,131 records.
+- Only 610 subscription records fall into the 12+ month category.
+- A substantial portion of subscription records have relatively short calculated tenure.
+
+**Business Interpretation**
+
+Subscription tenure is influenced by the observation period and subscription start dates.
+
+The query uses subscription end dates when available and December 31, 2024 otherwise.
+
+**Business Recommendation**
+
+Distinguish completed subscription lifetimes from ongoing, right-censored subscriptions in future retention analysis.
+
+---
+
+### Query 57 – Churn by Subscription Tenure
+
+**Results**
+
+| Tenure Category | Records | Churn-Flagged | Churn-Flag % |
+|---|---:|---:|---:|
+| Less Than 1 Month | 1,038 | 204 | 19.65% |
+| 1–3 Months | 1,131 | 126 | 11.14% |
+| 3–6 Months | 1,075 | 77 | 7.16% |
+| 6–12 Months | 1,146 | 58 | 5.06% |
+| 12+ Months | 610 | 21 | 3.44% |
+
+**Key Findings**
+
+- Subscriptions with calculated tenure below one month have the highest churn-flag percentage.
+- The percentage declines across longer tenure categories.
+- The 12+ month category has the lowest churn-flag percentage at 3.44%.
+- The less-than-one-month category accounts for 204 churn-flagged records.
+
+**Business Interpretation**
+
+The descriptive pattern suggests an association between shorter calculated tenure and churn flags.
+
+However, the query does not establish that longer tenure causes better retention.
+
+Completed and ongoing subscriptions are treated differently, and subscription end dates may be associated with churn itself.
+
+**Business Recommendation**
+
+Conduct cohort-based retention and survival analysis using consistent observation windows.
+
+Investigate early customer onboarding and activation experiences.
+
+---
+
+### Query 58 – Account-Level Churn Exposure
+
+**Results**
+
+| Metric | Accounts |
+|---|---:|
+| Total accounts | 500 |
+| Accounts with any churn flag | 312 |
+| Accounts with mixed churn flags | 312 |
+| Accounts with all records churn-flagged | 0 |
+| Accounts without churn flags | 188 |
+
+**Key Findings**
+
+- 312 accounts have at least one churn-flagged subscription.
+- All 312 also have at least one non-churn-flagged subscription.
+- No account has every subscription record marked as churned.
+- 188 accounts have no churn-flagged subscription records.
+
+**Business Interpretation**
+
+A subscription-level churn flag does not necessarily indicate that the entire customer account has churned.
+
+The presence of both flagged and non-flagged records may reflect multiple subscriptions or subscription history.
+
+**Business Recommendation**
+
+Define customer churn using account-level paid subscription activity and an explicit reporting period.
+
+---
+
+### Query 59 – Account-Level Churn Flag vs Churn Event Reconciliation
+
+**Results**
+
+| Reconciliation Category | Accounts | Subscription Records | Churn-Flagged Records | Churn Events |
+|---|---:|---:|---:|---:|
+| Has Churn Flag and Event | 227 | 2,430 | 352 | 386 |
+| Has Churn Event Only | 125 | 1,098 | 0 | 214 |
+| Has Churn Flag Only | 85 | 905 | 134 | 0 |
+| Neither Flag nor Event | 63 | 567 | 0 | 0 |
+| **Total** | **500** | **5,000** | **486** | **600** |
+
+**Key Findings**
+
+- 227 accounts have both churn-flagged subscriptions and recorded churn events.
+- 125 accounts have churn events but no churn-flagged subscriptions.
+- 85 accounts have churn-flagged subscriptions but no recorded churn events.
+- 63 accounts have neither indicator.
+- The reconciliation preserves all 500 accounts, 5,000 subscription records, 486 churn flags, and 600 churn events.
+
+**Critical Data Quality Finding**
+
+The `churn_events` table does not contain a `subscription_id` field.
+
+Therefore, direct subscription-to-event reconciliation is not possible with the available schema.
+
+The account-level comparison reveals differences between the two churn indicators but does not prove that either source is incorrect.
+
+**Business Recommendation**
+
+Investigate event-generation rules, subscription churn-flag definitions, and account reactivation behavior.
+
+Introduce a reliable subscription-level event relationship if the source system supports it.
+
+---
+
+### Query 60 – Top 20 Accounts by Churn-Flagged MRR
+
+**Top 10 Results**
+
+| Account | Industry | Churn-Flagged Records | Churn-Flagged MRR |
+|---|---|---:|---:|
+| Company_358 | EdTech | 6 | $60,465 |
+| Company_492 | Cybersecurity | 2 | $26,080 |
+| Company_4 | HealthTech | 2 | $23,406 |
+| Company_403 | FinTech | 1 | $23,283 |
+| Company_47 | DevTools | 4 | $21,066 |
+| Company_303 | FinTech | 1 | $20,497 |
+| Company_376 | Cybersecurity | 2 | $19,502 |
+| Company_278 | Cybersecurity | 2 | $19,502 |
+| Company_163 | Cybersecurity | 3 | $19,144 |
+| Company_91 | HealthTech | 2 | $19,104 |
+
+**Key Findings**
+
+- Company_358 has the highest churn-flagged MRR at $60,465.
+- Company_358 also has six churn-flagged subscription records.
+- Several Cybersecurity accounts appear among the highest churn-associated revenue accounts.
+- Company_403, previously identified as the highest recorded MRR account in Day 2, also appears in the churn-exposure ranking.
+- High churn-flagged MRR does not necessarily indicate complete customer churn.
+
+**Business Interpretation**
+
+Account-level churn-associated revenue can help identify candidates for further investigation.
+
+However, these rankings should not be treated as verified lost-revenue rankings.
+
+**Business Recommendation**
+
+Review high-value accounts using current active MRR, churn-event history, subscription changes, product usage, and support activity.
+
+---
+
+## 3. Strategic Business Recommendations
+
+### Recommendation 1 – Improve Early Customer Onboarding
+
+**Finding:** Subscriptions with less than one month of calculated tenure have a 19.65% churn-flag percentage.
+
+**Actions:**
+- Investigate early subscription cancellations.
+- Monitor onboarding completion and feature adoption.
+- Identify common obstacles during initial customer activation.
+- Develop proactive support for newly acquired customers.
+- Validate early churn patterns using cohort-based analysis.
+
+**Expected Business Benefit:** Better understanding of early lifecycle churn drivers and opportunities to improve customer activation.
+
+### Recommendation 2 – Prioritize Product and Support Improvements
+
+**Finding:** Features and support together account for 218 churn events.
+
+**Actions:**
+- Review feature-related customer feedback.
+- Identify frequently requested product capabilities.
+- Analyze support ticket resolution times and satisfaction.
+- Investigate recurring customer complaints.
+- Coordinate findings with Product and Customer Success teams.
+
+**Expected Business Benefit:** Better prioritization of product and service improvements based on recorded churn reasons.
+
+### Recommendation 3 – Protect Enterprise Revenue
+
+**Finding:** Enterprise subscriptions account for $926,345 in churn-flagged MRR.
+
+**Actions:**
+- Review high-value Enterprise accounts.
+- Monitor renewal and downgrade activity.
+- Identify product adoption and support issues.
+- Develop account-specific retention strategies.
+- Validate actual revenue loss before calculating churn impact.
+
+**Expected Business Benefit:** Improved visibility into high-value subscription exposure.
+
+### Recommendation 4 – Improve Churn Data Reconciliation
+
+**Finding:** 125 accounts have churn events without subscription churn flags, while 85 have subscription churn flags without recorded events.
+
+**Actions:**
+- Validate the business definitions of both churn indicators.
+- Investigate event timing and reactivation behavior.
+- Review subscription lifecycle status changes.
+- Establish consistent account-level churn rules.
+- Document reconciliation exceptions.
+
+**Expected Business Benefit:** More reliable churn reporting and customer retention metrics.
+
+### Recommendation 5 – Develop Industry-Specific Retention Strategies
+
+**Finding:** DevTools has the highest churn-flag percentage, while Cybersecurity has the highest churn-flagged MRR.
+
+**Actions:**
+- Analyze churn reasons by industry.
+- Compare customer tenure and plan mix.
+- Investigate industry-specific product requirements.
+- Evaluate account-level revenue exposure.
+- Prioritize interventions based on validated business impact.
+
+**Expected Business Benefit:** Better alignment of retention strategies with customer segment characteristics.
+
+### Recommendation 6 – Improve Churn Reason Classification
+
+**Finding:** 95 churn events have an unknown reason.
+
+**Actions:**
+- Improve churn-reason capture during cancellation.
+- Standardize churn-reason categories.
+- Review missing or ambiguous reasons.
+- Establish data quality monitoring for churn event records.
+
+**Expected Business Benefit:** More complete information for product, pricing, and customer-experience decisions.
+
+---
+
+## 4. Data Quality Findings and Analytical Limitations
+
+### 4.1 Churn Flags vs Churn Events
+
+There are 486 churn-flagged subscription records and 600 recorded churn events.
+
+These are different measures from different tables and cannot be compared as equivalent churn populations.
+
+### 4.2 Missing Subscription Identifier in Churn Events
+
+The churn event table does not contain `subscription_id`.
+
+Direct event-to-subscription reconciliation cannot be performed.
+
+### 4.3 Churn-Flag Percentage Is Not a Period Churn Rate
+
+The 9.72% subscription churn-flag percentage is calculated across all subscription records.
+
+It is not a monthly, quarterly, or annual customer churn rate.
+
+### 4.4 Churn-Flagged MRR Is Not Verified Revenue Loss
+
+The $1,179,139 associated with churn-flagged records is not necessarily the MRR lost in a specific reporting period.
+
+Historical subscription overlap and revenue timing must be considered.
+
+### 4.5 Customer-Level Churn Requires Active Status Validation
+
+An account with one churn-flagged subscription may still have other active subscriptions.
+
+Account churn requires a defined paid-customer status at relevant reporting dates.
+
+### 4.6 Subscription Tenure Has Censoring Limitations
+
+The tenure calculation combines subscription end dates and a reporting-date fallback.
+
+Ongoing subscriptions have incomplete observed lifetimes.
+
+### 4.7 Churn Event Counts Require Population Context
+
+Higher churn-event counts may reflect growth in the number of customers or subscriptions.
+
+Monthly churn rates require a consistent eligible population.
+
+### 4.8 Auto-Renewal Results Are Descriptive
+
+The observed churn-flag percentages for enabled and disabled auto-renewal are similar.
+
+No causal relationship can be established from these results.
+
+### 4.9 Reactivation Is Not Yet Incorporated
+
+Although churn events contain a reactivation indicator, the Day 3 queries do not separately analyze reactivation outcomes.
+
+Reactivation analysis is required for a more complete customer lifecycle view.
+
+### 4.10 Revenue Retention Metrics Are Not Yet Validated
+
+Gross Revenue Retention (GRR) and Net Revenue Retention (NRR) require beginning-period recurring revenue, churn, contraction, and expansion values.
+
+These cannot be established from the current Day 3 churn-flag summaries alone.
+
+---
+
+## 5. Day 3 KPI Summary
+
+| KPI | Result |
+|---|---:|
+| Subscription records | 5,000 |
+| Customer accounts | 500 |
+| Churn-flagged subscription records | 486 |
+| Subscription churn-flag percentage | 9.72% |
+| Churn-flagged MRR | $1,179,139 |
+| Recorded churn events | 600 |
+| Accounts with churn events | 352 |
+| December 2024 churn events | 117 |
+| Feature-related churn events | 114 |
+| Support-related churn events | 104 |
+| Budget-related churn events | 104 |
+| Enterprise churn-flagged MRR | $926,345 |
+| DevTools churn-flag percentage | 10.79% |
+| France churn-flag percentage | 11.85% |
+| Less-than-one-month churn-flag percentage | 19.65% |
+| Accounts with any churn flag | 312 |
+| Accounts with mixed churn flags | 312 |
+| Accounts with churn flag and event | 227 |
+| Accounts with event only | 125 |
+| Accounts with churn flag only | 85 |
+| Accounts with neither indicator | 63 |
+| Highest churn-flagged MRR account | Company_358 |
+| Highest account churn-flagged MRR | $60,465 |
+
+---
+
+## 6. Final Day 3 Conclusion
+
+Day 3 successfully analyzed customer churn and subscription retention indicators using 15 SQL queries across the RavenStack SaaS dataset.
+
+The analysis identified several important patterns:
+
+1. Churn-flagged subscription records represent 9.72% of the dataset.
+2. Recorded churn-event volume increased toward the end of 2024.
+3. Feature limitations, support issues, and budget constraints are leading recorded churn reasons.
+4. Enterprise subscriptions contribute the largest churn-associated recurring revenue.
+5. Shorter calculated subscription tenure is associated with higher churn-flag percentages.
+6. Churn flags and churn events differ substantially at the account level.
+7. Subscription overlap and incomplete event relationships limit the ability to calculate validated customer and revenue churn metrics.
+
+The findings provide a foundation for improving customer onboarding, product experience, Enterprise retention, churn data quality, and revenue-risk reporting.
+
+Future analysis should extend these results through customer cohort retention, reactivation, revenue movement, and product usage analysis.
+
+**Day 3 Status:** Completed – Queries 46–60 executed and documented.
+---
