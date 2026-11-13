@@ -909,3 +909,480 @@ HAVING SUM(
 ORDER BY churn_flagged_mrr DESC
 LIMIT 20;
 
+
+-- ============================================================
+-- PROJECT 20: SaaS Revenue & Subscription Analytics
+-- DAY 4: Customer Engagement, Feature Adoption & Support
+-- Queries 61–75
+-- ============================================================
+
+
+-- ============================================================
+-- QUERY 61: Feature Usage Data Profiling
+-- ============================================================
+
+SELECT
+    COUNT(*) AS total_usage_records,
+    COUNT(DISTINCT usage_id) AS unique_usage_ids,
+    COUNT(DISTINCT subscription_id) AS subscriptions_with_usage,
+    COUNT(DISTINCT feature_name) AS distinct_features,
+    MIN(usage_date) AS earliest_usage_date,
+    MAX(usage_date) AS latest_usage_date,
+    SUM(usage_count) AS total_feature_uses,
+    ROUND(SUM(usage_duration_secs) / 3600.0, 2)
+        AS total_usage_hours,
+    SUM(error_count) AS total_errors,
+    SUM(CASE WHEN is_beta_feature THEN 1 ELSE 0 END)
+        AS beta_usage_records
+FROM feature_usage;
+
+
+-- ============================================================
+-- QUERY 62: Feature Adoption and Engagement by Feature
+-- ============================================================
+
+SELECT
+    feature_name,
+    COUNT(*) AS usage_records,
+    COUNT(DISTINCT subscription_id) AS subscriptions_using_feature,
+    SUM(usage_count) AS total_feature_uses,
+    ROUND(AVG(usage_count), 2) AS avg_uses_per_record,
+    ROUND(SUM(usage_duration_secs) / 3600.0, 2)
+        AS total_usage_hours,
+    SUM(error_count) AS total_errors,
+    ROUND(
+        1000.0 * SUM(error_count) /
+        NULLIF(SUM(usage_count), 0),
+        2
+    ) AS errors_per_1000_uses
+FROM feature_usage
+GROUP BY feature_name
+ORDER BY total_feature_uses DESC;
+
+
+-- ============================================================
+-- QUERY 63: Monthly Feature Engagement Trends
+-- ============================================================
+
+SELECT
+    DATE_TRUNC('month', usage_date)::DATE AS usage_month,
+    COUNT(*) AS usage_records,
+    COUNT(DISTINCT subscription_id) AS active_subscriptions,
+    COUNT(DISTINCT feature_name) AS features_used,
+    SUM(usage_count) AS total_feature_uses,
+    ROUND(SUM(usage_duration_secs) / 3600.0, 2)
+        AS total_usage_hours,
+    SUM(error_count) AS total_errors
+FROM feature_usage
+GROUP BY 1
+ORDER BY 1;
+
+
+-- ============================================================
+-- QUERY 64: Feature Engagement by Subscription Plan Tier
+-- ============================================================
+
+SELECT
+    s.plan_tier,
+    COUNT(f.usage_id) AS usage_records,
+    COUNT(DISTINCT s.subscription_id)
+        AS subscriptions_with_usage,
+    COUNT(DISTINCT f.feature_name) AS distinct_features,
+    COALESCE(SUM(f.usage_count), 0) AS total_feature_uses,
+    ROUND(
+        COALESCE(SUM(f.usage_duration_secs), 0) / 3600.0,
+        2
+    ) AS total_usage_hours,
+    COALESCE(SUM(f.error_count), 0) AS total_errors
+FROM subscriptions s
+LEFT JOIN feature_usage f
+    ON s.subscription_id = f.subscription_id
+GROUP BY s.plan_tier
+ORDER BY total_feature_uses DESC;
+
+
+-- ============================================================
+-- QUERY 65: Top 20 Most Engaged Customer Accounts
+-- ============================================================
+
+WITH account_engagement AS (
+    SELECT
+        s.account_id,
+        COUNT(f.usage_id) AS usage_records,
+        COUNT(DISTINCT f.feature_name) AS distinct_features,
+        COUNT(DISTINCT f.usage_date) AS active_usage_days,
+        SUM(f.usage_count) AS total_feature_uses,
+        SUM(f.usage_duration_secs) AS total_duration_secs,
+        SUM(f.error_count) AS total_errors
+    FROM subscriptions s
+    JOIN feature_usage f
+        ON s.subscription_id = f.subscription_id
+    GROUP BY s.account_id
+)
+SELECT
+    a.account_id,
+    a.account_name,
+    a.industry,
+    a.country,
+    e.usage_records,
+    e.distinct_features,
+    e.active_usage_days,
+    e.total_feature_uses,
+    ROUND(e.total_duration_secs / 3600.0, 2)
+        AS total_usage_hours,
+    e.total_errors
+FROM account_engagement e
+JOIN accounts a
+    ON e.account_id = a.account_id
+ORDER BY e.total_feature_uses DESC
+LIMIT 20;
+
+
+-- ============================================================
+-- QUERY 66: Low-Engagement Customer Identification
+-- ============================================================
+
+WITH account_engagement AS (
+    SELECT
+        a.account_id,
+        a.account_name,
+        a.industry,
+        COUNT(DISTINCT f.usage_id) AS usage_records,
+        COALESCE(SUM(f.usage_count), 0) AS total_feature_uses,
+        COUNT(DISTINCT f.feature_name) AS distinct_features
+    FROM accounts a
+    LEFT JOIN subscriptions s
+        ON a.account_id = s.account_id
+    LEFT JOIN feature_usage f
+        ON s.subscription_id = f.subscription_id
+    GROUP BY a.account_id, a.account_name, a.industry
+)
+SELECT
+    CASE
+        WHEN total_feature_uses = 0 THEN 'No Recorded Usage'
+        WHEN total_feature_uses < 100 THEN 'Very Low Usage'
+        WHEN total_feature_uses < 500 THEN 'Low Usage'
+        WHEN total_feature_uses < 2000 THEN 'Moderate Usage'
+        ELSE 'High Usage'
+    END AS engagement_segment,
+    COUNT(*) AS accounts,
+    ROUND(AVG(total_feature_uses), 2)
+        AS avg_feature_uses_per_account,
+    ROUND(AVG(distinct_features), 2)
+        AS avg_distinct_features
+FROM account_engagement
+GROUP BY 1
+ORDER BY MIN(total_feature_uses);
+
+
+-- ============================================================
+-- QUERY 67: Feature Engagement vs Subscription Churn Flags
+-- ============================================================
+
+WITH subscription_engagement AS (
+    SELECT
+        s.subscription_id,
+        s.churn_flag,
+        s.mrr_amount,
+        COUNT(f.usage_id) AS usage_records,
+        COALESCE(SUM(f.usage_count), 0) AS total_feature_uses,
+        COUNT(DISTINCT f.feature_name) AS distinct_features,
+        COALESCE(SUM(f.error_count), 0) AS total_errors
+    FROM subscriptions s
+    LEFT JOIN feature_usage f
+        ON s.subscription_id = f.subscription_id
+    GROUP BY
+        s.subscription_id,
+        s.churn_flag,
+        s.mrr_amount
+)
+SELECT
+    CASE
+        WHEN total_feature_uses = 0 THEN 'No Usage'
+        WHEN total_feature_uses < 100 THEN 'Very Low'
+        WHEN total_feature_uses < 500 THEN 'Low'
+        WHEN total_feature_uses < 2000 THEN 'Moderate'
+        ELSE 'High'
+    END AS engagement_segment,
+    COUNT(*) AS subscriptions,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_subscriptions,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS churn_flag_percentage,
+    ROUND(AVG(distinct_features), 2)
+        AS avg_distinct_features,
+    SUM(CASE WHEN churn_flag THEN mrr_amount ELSE 0 END)
+        AS churn_flagged_mrr
+FROM subscription_engagement
+GROUP BY 1
+ORDER BY MIN(total_feature_uses);
+
+
+-- ============================================================
+-- QUERY 68: Feature Adoption by Customer Industry
+-- ============================================================
+
+SELECT
+    a.industry,
+    COUNT(DISTINCT a.account_id) AS accounts_with_usage,
+    COUNT(DISTINCT f.subscription_id)
+        AS subscriptions_with_usage,
+    COUNT(DISTINCT f.feature_name) AS distinct_features,
+    COUNT(f.usage_id) AS usage_records,
+    SUM(f.usage_count) AS total_feature_uses,
+    ROUND(SUM(f.usage_duration_secs) / 3600.0, 2)
+        AS total_usage_hours,
+    SUM(f.error_count) AS total_errors
+FROM feature_usage f
+JOIN subscriptions s
+    ON f.subscription_id = s.subscription_id
+JOIN accounts a
+    ON s.account_id = a.account_id
+GROUP BY a.industry
+ORDER BY total_feature_uses DESC;
+
+
+-- ============================================================
+-- QUERY 69: Support Ticket Data Profiling
+-- ============================================================
+
+SELECT
+    COUNT(*) AS total_tickets,
+    COUNT(DISTINCT ticket_id) AS unique_ticket_ids,
+    COUNT(DISTINCT account_id) AS accounts_with_tickets,
+    MIN(submitted_at) AS earliest_ticket_date,
+    MAX(submitted_at) AS latest_ticket_date,
+    SUM(CASE WHEN closed_at IS NOT NULL THEN 1 ELSE 0 END)
+        AS closed_tickets,
+    SUM(CASE WHEN closed_at IS NULL THEN 1 ELSE 0 END)
+        AS tickets_without_closed_at,
+    SUM(CASE WHEN escalation_flag THEN 1 ELSE 0 END)
+        AS escalated_tickets,
+    SUM(CASE WHEN satisfaction_score IS NULL THEN 1 ELSE 0 END)
+        AS missing_satisfaction_scores
+FROM support_tickets;
+
+
+-- ============================================================
+-- QUERY 70: Monthly Support Ticket Trends
+-- ============================================================
+
+SELECT
+    DATE_TRUNC('month', submitted_at)::DATE AS ticket_month,
+    COUNT(*) AS total_tickets,
+    COUNT(DISTINCT account_id) AS affected_accounts,
+    SUM(CASE WHEN escalation_flag THEN 1 ELSE 0 END)
+        AS escalated_tickets,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN escalation_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS escalation_percentage,
+    ROUND(AVG(first_response_time_minutes), 2)
+        AS avg_first_response_minutes
+FROM support_tickets
+GROUP BY 1
+ORDER BY 1;
+
+
+-- ============================================================
+-- QUERY 71: Support Ticket Priority Analysis
+-- ============================================================
+
+SELECT
+    priority,
+    COUNT(*) AS total_tickets,
+    SUM(CASE WHEN escalation_flag THEN 1 ELSE 0 END)
+        AS escalated_tickets,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN escalation_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS escalation_percentage,
+    ROUND(AVG(first_response_time_minutes), 2)
+        AS avg_first_response_minutes,
+    ROUND(AVG(resolution_time_hours), 2)
+        AS avg_resolution_hours
+FROM support_tickets
+GROUP BY priority
+ORDER BY total_tickets DESC;
+
+
+-- ============================================================
+-- QUERY 72: Support Resolution Performance
+-- ============================================================
+
+SELECT
+    CASE
+        WHEN closed_at IS NULL THEN 'No Closure Timestamp'
+        WHEN resolution_time_hours IS NULL THEN 'Missing Resolution Time'
+        WHEN resolution_time_hours < 4 THEN 'Under 4 Hours'
+        WHEN resolution_time_hours < 12 THEN '4–12 Hours'
+        WHEN resolution_time_hours < 24 THEN '12–24 Hours'
+        WHEN resolution_time_hours < 48 THEN '24–48 Hours'
+        ELSE '48+ Hours'
+    END AS resolution_segment,
+    COUNT(*) AS tickets,
+    ROUND(AVG(resolution_time_hours), 2)
+        AS avg_resolution_hours,
+    ROUND(AVG(first_response_time_minutes), 2)
+        AS avg_first_response_minutes,
+    SUM(CASE WHEN escalation_flag THEN 1 ELSE 0 END)
+        AS escalated_tickets
+FROM support_tickets
+GROUP BY 1
+ORDER BY tickets DESC;
+
+
+-- ============================================================
+-- QUERY 73: Customer Satisfaction Analysis
+-- ============================================================
+
+SELECT
+    priority,
+    COUNT(*) AS total_tickets,
+    COUNT(satisfaction_score) AS rated_tickets,
+    SUM(CASE WHEN satisfaction_score IS NULL THEN 1 ELSE 0 END)
+        AS unrated_tickets,
+    ROUND(AVG(satisfaction_score), 2)
+        AS avg_satisfaction_score,
+    ROUND(AVG(resolution_time_hours), 2)
+        AS avg_resolution_hours,
+    ROUND(
+        100.0 * COUNT(satisfaction_score) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS satisfaction_response_percentage
+FROM support_tickets
+GROUP BY priority
+ORDER BY avg_satisfaction_score DESC NULLS LAST;
+
+
+-- ============================================================
+-- QUERY 74: Support Activity vs Account Churn Flags
+-- ============================================================
+
+WITH account_support AS (
+    SELECT
+        account_id,
+        COUNT(*) AS ticket_count,
+        SUM(CASE WHEN escalation_flag THEN 1 ELSE 0 END)
+            AS escalated_tickets,
+        AVG(satisfaction_score) AS avg_satisfaction
+    FROM support_tickets
+    GROUP BY account_id
+)
+SELECT
+    CASE
+        WHEN COALESCE(t.ticket_count, 0) = 0 THEN 'No Tickets'
+        WHEN t.ticket_count = 1 THEN '1 Ticket'
+        WHEN t.ticket_count BETWEEN 2 AND 3 THEN '2–3 Tickets'
+        WHEN t.ticket_count BETWEEN 4 AND 6 THEN '4–6 Tickets'
+        ELSE '7+ Tickets'
+    END AS support_segment,
+    COUNT(*) AS accounts,
+    SUM(CASE WHEN a.churn_flag THEN 1 ELSE 0 END)
+        AS account_churn_flagged,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN a.churn_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS account_churn_flag_percentage,
+    ROUND(AVG(COALESCE(t.ticket_count, 0)), 2)
+        AS avg_tickets_per_account,
+    ROUND(AVG(t.avg_satisfaction), 2)
+        AS avg_satisfaction
+FROM accounts a
+LEFT JOIN account_support t
+    ON a.account_id = t.account_id
+GROUP BY 1
+ORDER BY MIN(COALESCE(t.ticket_count, 0));
+
+
+-- ============================================================
+-- QUERY 75: Combined Engagement and Support Risk Segmentation
+-- ============================================================
+
+WITH account_engagement AS (
+    SELECT
+        s.account_id,
+        COALESCE(SUM(f.usage_count), 0) AS total_feature_uses,
+        COALESCE(SUM(f.error_count), 0) AS total_errors
+    FROM subscriptions s
+    LEFT JOIN feature_usage f
+        ON s.subscription_id = f.subscription_id
+    GROUP BY s.account_id
+),
+account_support AS (
+    SELECT
+        account_id,
+        COUNT(*) AS ticket_count,
+        SUM(CASE WHEN escalation_flag THEN 1 ELSE 0 END)
+            AS escalated_tickets
+    FROM support_tickets
+    GROUP BY account_id
+),
+account_metrics AS (
+    SELECT
+        a.account_id,
+        a.churn_flag,
+        COALESCE(e.total_feature_uses, 0) AS total_feature_uses,
+        COALESCE(e.total_errors, 0) AS total_errors,
+        COALESCE(t.ticket_count, 0) AS ticket_count,
+        COALESCE(t.escalated_tickets, 0) AS escalated_tickets
+    FROM accounts a
+    LEFT JOIN account_engagement e
+        ON a.account_id = e.account_id
+    LEFT JOIN account_support t
+        ON a.account_id = t.account_id
+),
+risk_segments AS (
+    SELECT
+        *,
+        CASE
+            WHEN total_feature_uses < 100
+                 AND (ticket_count >= 4 OR escalated_tickets >= 1)
+                THEN 'High Attention'
+            WHEN total_feature_uses < 500
+                 OR escalated_tickets >= 2
+                THEN 'Elevated Attention'
+            WHEN total_feature_uses < 2000
+                 OR ticket_count >= 4
+                THEN 'Moderate Attention'
+            ELSE 'Standard Monitoring'
+        END AS attention_segment
+    FROM account_metrics
+)
+SELECT
+    attention_segment,
+    COUNT(*) AS accounts,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS account_churn_flagged,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS account_churn_flag_percentage,
+    ROUND(AVG(total_feature_uses), 2)
+        AS avg_feature_uses,
+    ROUND(AVG(ticket_count), 2)
+        AS avg_support_tickets,
+    SUM(escalated_tickets) AS total_escalations
+FROM risk_segments
+GROUP BY attention_segment
+ORDER BY
+    CASE attention_segment
+        WHEN 'High Attention' THEN 1
+        WHEN 'Elevated Attention' THEN 2
+        WHEN 'Moderate Attention' THEN 3
+        ELSE 4
+    END;
+
