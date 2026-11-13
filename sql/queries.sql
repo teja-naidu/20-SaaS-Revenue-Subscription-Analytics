@@ -500,3 +500,412 @@ SELECT
         2
     ) AS multi_record_mrr_share_pct
 FROM account_summary;
+
+
+-- ============================================================
+-- PROJECT 20: SaaS Revenue & Subscription Analytics
+-- DAY 3: Customer Churn & Retention Analytics
+-- Queries 46–60
+-- ============================================================
+
+-- Reporting date: 2024-12-31
+-- Churn flags represent subscription-record characteristics.
+-- Churn events represent separately recorded churn activity.
+-- Do not assume that these populations are identical.
+
+
+-- ============================================================
+-- QUERY 46: Overall Subscription Churn Overview
+-- ============================================================
+
+SELECT
+    COUNT(*) AS total_subscription_records,
+    COUNT(DISTINCT account_id) AS total_accounts,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    SUM(CASE WHEN NOT churn_flag THEN 1 ELSE 0 END)
+        AS non_churn_flagged_records,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS churn_flag_percentage,
+    SUM(CASE WHEN churn_flag THEN mrr_amount ELSE 0 END)
+        AS mrr_associated_with_churn_flags
+FROM subscriptions;
+
+-- ============================================================
+-- QUERY 47: Churn Event Summary
+-- ============================================================
+
+SELECT
+    COUNT(*) AS total_churn_events,
+    COUNT(DISTINCT churn_event_id) AS unique_churn_events,
+    COUNT(DISTINCT account_id) AS accounts_with_churn_events,
+    MIN(churn_date) AS earliest_churn_date,
+    MAX(churn_date) AS latest_churn_date
+FROM churn_events;
+
+-- ============================================================
+-- QUERY 48: Monthly Churn Event Trend
+-- ============================================================
+
+SELECT
+    DATE_TRUNC('month', churn_date)::DATE AS churn_month,
+    COUNT(*) AS churn_events,
+    COUNT(DISTINCT account_id) AS affected_accounts
+FROM churn_events
+GROUP BY 1
+ORDER BY 1;
+
+-- ============================================================
+-- QUERY 49: Churn Reasons Distribution
+-- ============================================================
+
+SELECT
+    reason_code,
+    COUNT(*) AS churn_events,
+    COUNT(DISTINCT account_id) AS affected_accounts,
+    ROUND(
+        100.0 * COUNT(*) /
+        SUM(COUNT(*)) OVER (),
+        2
+    ) AS pct_churn_events
+FROM churn_events
+GROUP BY reason_code
+ORDER BY churn_events DESC;
+
+-- ============================================================
+-- QUERY 50: Churn by Subscription Plan Tier
+-- ============================================================
+
+SELECT
+    plan_tier,
+    COUNT(*) AS subscription_records,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS churn_flag_percentage,
+    SUM(CASE WHEN churn_flag THEN mrr_amount ELSE 0 END)
+        AS churn_flagged_mrr
+FROM subscriptions
+GROUP BY plan_tier
+ORDER BY churn_flag_percentage DESC;
+
+
+-- ============================================================
+-- QUERY 51: Churn by Billing Frequency
+-- ============================================================
+
+SELECT
+    billing_frequency,
+    COUNT(*) AS subscription_records,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS churn_flag_percentage,
+    SUM(CASE WHEN churn_flag THEN mrr_amount ELSE 0 END)
+        AS churn_flagged_mrr
+FROM subscriptions
+GROUP BY billing_frequency
+ORDER BY churn_flag_percentage DESC;
+
+
+-- ============================================================
+-- QUERY 52: Churn by Trial vs Paid Subscription
+-- ============================================================
+
+SELECT
+    CASE
+        WHEN is_trial = TRUE THEN 'Trial'
+        WHEN is_trial = FALSE THEN 'Paid'
+        ELSE 'Unknown'
+    END AS subscription_type,
+    COUNT(*) AS subscription_records,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS churn_flag_percentage,
+    SUM(CASE WHEN churn_flag THEN mrr_amount ELSE 0 END)
+        AS churn_flagged_mrr
+FROM subscriptions
+GROUP BY 1
+ORDER BY churn_flag_percentage DESC;
+
+
+-- ============================================================
+-- QUERY 53: Churn by Customer Industry
+-- ============================================================
+
+SELECT
+    a.industry,
+    COUNT(*) AS subscription_records,
+    COUNT(DISTINCT s.account_id) AS accounts,
+    SUM(CASE WHEN s.churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN s.churn_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS churn_flag_percentage,
+    SUM(CASE WHEN s.churn_flag THEN s.mrr_amount ELSE 0 END)
+        AS churn_flagged_mrr
+FROM subscriptions s
+JOIN accounts a
+    ON s.account_id = a.account_id
+GROUP BY a.industry
+ORDER BY churn_flag_percentage DESC;
+
+
+-- ============================================================
+-- QUERY 54: Churn by Customer Country
+-- ============================================================
+
+SELECT
+    a.country,
+    COUNT(*) AS subscription_records,
+    SUM(CASE WHEN s.churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN s.churn_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS churn_flag_percentage,
+    SUM(CASE WHEN s.churn_flag THEN s.mrr_amount ELSE 0 END)
+        AS churn_flagged_mrr
+FROM subscriptions s
+JOIN accounts a
+    ON s.account_id = a.account_id
+GROUP BY a.country
+ORDER BY churn_flag_percentage DESC;
+
+
+-- ============================================================
+-- QUERY 55: Churn by Auto-Renewal Status
+-- ============================================================
+
+SELECT
+    auto_renew_flag,
+    COUNT(*) AS subscription_records,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS churn_flag_percentage,
+    SUM(CASE WHEN churn_flag THEN mrr_amount ELSE 0 END)
+        AS churn_flagged_mrr
+FROM subscriptions
+GROUP BY auto_renew_flag
+ORDER BY churn_flag_percentage DESC;
+
+
+-- ============================================================
+-- QUERY 56: Subscription Tenure Distribution
+-- ============================================================
+
+WITH subscription_tenure AS (
+    SELECT
+        subscription_id,
+        account_id,
+        DATE_DIFF(
+            'day',
+            start_date,
+            COALESCE(end_date, DATE '2024-12-31')
+        ) AS tenure_days
+    FROM subscriptions
+    WHERE start_date <= DATE '2024-12-31'
+)
+SELECT
+    CASE
+        WHEN tenure_days < 0 THEN 'Invalid Negative Tenure'
+        WHEN tenure_days < 30 THEN 'Less Than 1 Month'
+        WHEN tenure_days < 90 THEN '1–3 Months'
+        WHEN tenure_days < 180 THEN '3–6 Months'
+        WHEN tenure_days < 365 THEN '6–12 Months'
+        ELSE '12+ Months'
+    END AS tenure_category,
+    COUNT(*) AS subscription_records,
+    COUNT(DISTINCT account_id) AS accounts,
+    ROUND(AVG(tenure_days), 2) AS avg_tenure_days
+FROM subscription_tenure
+GROUP BY 1
+ORDER BY MIN(tenure_days);
+
+
+-- ============================================================
+-- QUERY 57: Churn Flag Percentage by Subscription Tenure
+-- ============================================================
+
+WITH subscription_tenure AS (
+    SELECT
+        subscription_id,
+        churn_flag,
+        DATE_DIFF(
+            'day',
+            start_date,
+            COALESCE(end_date, DATE '2024-12-31')
+        ) AS tenure_days
+    FROM subscriptions
+    WHERE start_date <= DATE '2024-12-31'
+)
+SELECT
+    CASE
+        WHEN tenure_days < 0 THEN 'Invalid Negative Tenure'
+        WHEN tenure_days < 30 THEN 'Less Than 1 Month'
+        WHEN tenure_days < 90 THEN '1–3 Months'
+        WHEN tenure_days < 180 THEN '3–6 Months'
+        WHEN tenure_days < 365 THEN '6–12 Months'
+        ELSE '12+ Months'
+    END AS tenure_category,
+    COUNT(*) AS subscription_records,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    ROUND(
+        100.0 *
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END) /
+        NULLIF(COUNT(*), 0),
+        2
+    ) AS churn_flag_percentage
+FROM subscription_tenure
+GROUP BY 1
+ORDER BY MIN(tenure_days);
+
+
+-- ============================================================
+-- QUERY 58: Account-Level Churn Exposure
+-- ============================================================
+
+WITH account_churn AS (
+    SELECT
+        account_id,
+        COUNT(*) AS total_subscription_records,
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+            AS churn_flagged_records,
+        SUM(CASE WHEN NOT churn_flag THEN 1 ELSE 0 END)
+            AS non_churn_flagged_records
+    FROM subscriptions
+    GROUP BY account_id
+)
+SELECT
+    COUNT(*) AS total_accounts,
+    SUM(
+        CASE WHEN churn_flagged_records > 0
+             THEN 1 ELSE 0 END
+    ) AS accounts_with_any_churn_flag,
+    SUM(
+        CASE WHEN churn_flagged_records > 0
+              AND non_churn_flagged_records > 0
+             THEN 1 ELSE 0 END
+    ) AS accounts_with_mixed_churn_flags,
+    SUM(
+        CASE WHEN churn_flagged_records > 0
+              AND non_churn_flagged_records = 0
+             THEN 1 ELSE 0 END
+    ) AS accounts_with_all_records_churn_flagged,
+    SUM(
+        CASE WHEN churn_flagged_records = 0
+             THEN 1 ELSE 0 END
+    ) AS accounts_without_churn_flags
+FROM account_churn;
+
+
+
+-- ============================================================
+-- QUERY 59: Account-Level Churn Flag vs Churn Event Reconciliation
+-- ============================================================
+
+WITH subscription_flags AS (
+    SELECT
+        account_id,
+        COUNT(*) AS total_subscription_records,
+        SUM(
+            CASE WHEN churn_flag THEN 1 ELSE 0 END
+        ) AS churn_flagged_records
+    FROM subscriptions
+    GROUP BY account_id
+),
+event_summary AS (
+    SELECT
+        account_id,
+        COUNT(*) AS churn_event_count
+    FROM churn_events
+    GROUP BY account_id
+)
+SELECT
+    CASE
+        WHEN s.churn_flagged_records > 0
+         AND e.account_id IS NOT NULL
+            THEN 'Has Churn Flag and Event'
+        WHEN s.churn_flagged_records > 0
+         AND e.account_id IS NULL
+            THEN 'Has Churn Flag Only'
+        WHEN s.churn_flagged_records = 0
+         AND e.account_id IS NOT NULL
+            THEN 'Has Churn Event Only'
+        ELSE 'Neither Flag nor Event'
+    END AS reconciliation_category,
+    COUNT(*) AS accounts,
+    SUM(s.total_subscription_records)
+        AS subscription_records,
+    SUM(s.churn_flagged_records)
+        AS churn_flagged_records,
+    SUM(COALESCE(e.churn_event_count, 0))
+        AS churn_events
+FROM subscription_flags s
+LEFT JOIN event_summary e
+    ON s.account_id = e.account_id
+GROUP BY 1
+ORDER BY accounts DESC;
+
+-- ============================================================
+-- QUERY 60: Top 20 Accounts by Churn-Flagged MRR Exposure
+-- ============================================================
+
+SELECT
+    a.account_id,
+    a.account_name,
+    a.industry,
+    a.country,
+    COUNT(s.subscription_id) AS total_subscription_records,
+    SUM(CASE WHEN s.churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    SUM(
+        CASE WHEN s.churn_flag
+             THEN s.mrr_amount ELSE 0 END
+    ) AS churn_flagged_mrr,
+    SUM(
+        CASE WHEN NOT s.churn_flag
+             THEN s.mrr_amount ELSE 0 END
+    ) AS non_churn_flagged_mrr
+FROM accounts a
+JOIN subscriptions s
+    ON a.account_id = s.account_id
+GROUP BY
+    a.account_id,
+    a.account_name,
+    a.industry,
+    a.country
+HAVING SUM(
+    CASE WHEN s.churn_flag THEN 1 ELSE 0 END
+) > 0
+ORDER BY churn_flagged_mrr DESC
+LIMIT 20;
+
