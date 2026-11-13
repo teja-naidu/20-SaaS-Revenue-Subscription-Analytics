@@ -1425,3 +1425,940 @@ Future analysis should extend these results through customer cohort retention, r
 
 **Day 3 Status:** Completed – Queries 46–60 executed and documented.
 ---
+
+---
+
+# Day 4 – Customer Engagement, Feature Adoption & Support Analytics
+
+## Objective
+
+Analyze SaaS customer engagement, feature adoption, product usage,
+support ticket activity, resolution performance, customer satisfaction,
+and the relationship between customer activity and churn indicators.
+
+The analysis uses DuckDB SQL queries 61–75 to identify opportunities
+for improving customer experience, product adoption, and retention.
+
+**Dataset:** RavenStack SaaS Analytics
+**SQL Engine:** DuckDB
+**Queries:** 61–75
+**Analysis Period:** 2023–2024
+**Feature Usage Records:** 25,000
+**Support Tickets:** 2,000
+**Customer Accounts:** 500
+**Subscription Records:** 5,000
+
+---
+
+## 1. Executive Summary
+
+Day 4 examines product engagement and customer support performance
+using feature usage, subscription, account, and support ticket data.
+
+### Key Performance Indicators
+
+| KPI | Result |
+|---|---:|
+| Total feature usage records | 25,000 |
+| Unique feature usage IDs | 24,979 |
+| Duplicate usage ID occurrences | 21 |
+| Subscriptions with recorded usage | 4,967 |
+| Subscription usage coverage | 99.34% |
+| Distinct features | 40 |
+| Total recorded feature uses | 250,525 |
+| Total recorded usage hours | 21,126.41 |
+| Total recorded feature errors | 14,107 |
+| Beta feature usage records | 2,544 |
+| Total support tickets | 2,000 |
+| Unique support ticket IDs | 2,000 |
+| Tickets with closure timestamps | 2,000 |
+| Escalated support tickets | 95 |
+| Overall ticket escalation percentage | 4.75% |
+| Tickets missing satisfaction scores | 825 |
+| Tickets with satisfaction scores | 1,175 |
+| Satisfaction response percentage | 58.75% |
+| Tickets requiring 48+ hours | 697 |
+| Accounts requiring high attention | 1 |
+| Accounts requiring elevated attention | 252 |
+| Accounts requiring moderate attention | 247 |
+
+### Executive Findings
+
+1. Nearly all subscription records have associated feature usage.
+2. Product activity spans 40 distinct features.
+3. Enterprise subscriptions generate the highest total feature usage.
+4. Feature engagement is relatively evenly distributed across subscription tiers.
+5. Most customer accounts fall into low or moderate engagement categories under the selected thresholds.
+6. Feature usage contains duplicate identifiers requiring investigation.
+7. More than one-third of support tickets require at least 48 hours to resolve.
+8. Customer satisfaction averages are relatively similar across ticket priorities.
+9. A substantial portion of tickets lack satisfaction ratings.
+10. Support volume and account churn indicators do not show a simple linear relationship.
+11. The exploratory risk segmentation requires threshold calibration before operational use.
+
+---
+
+## 2. Detailed SQL Findings
+
+### Query 61 – Feature Usage Data Profiling
+
+**Results**
+
+| Metric | Result |
+|---|---:|
+| Total usage records | 25,000 |
+| Unique usage IDs | 24,979 |
+| Subscriptions with usage | 4,967 |
+| Distinct features | 40 |
+| Total feature uses | 250,525 |
+| Total usage hours | 21,126.41 |
+| Total errors | 14,107 |
+| Beta usage records | 2,544 |
+
+**Key Findings**
+
+- Feature usage is recorded for 4,967 of the 5,000 subscriptions.
+- Subscription usage coverage is approximately 99.34%.
+- There are 40 distinct features in the dataset.
+- The dataset contains 25,000 feature usage records.
+- Only 24,979 distinct usage IDs are present, resulting in 21 duplicate ID occurrences.
+- Total recorded feature usage exceeds 250,000 actions.
+- Beta feature records account for approximately 10.18% of all usage records.
+
+**Business Interpretation**
+
+The dataset provides broad coverage of subscription-level product activity.
+
+However, recorded usage does not necessarily mean that every subscription
+is actively engaged during a specific reporting period.
+
+Duplicate usage identifiers also require validation before using
+the records for financial or operational reporting.
+
+**Business Recommendations**
+
+- Investigate duplicate usage IDs.
+- Monitor feature adoption by subscription and customer.
+- Establish consistent definitions for active usage.
+- Track product errors and beta feature adoption separately.
+- Introduce monthly engagement monitoring.
+
+---
+
+### Query 62 – Feature Adoption and Engagement by Feature
+
+**Key Results**
+
+| Feature | Usage Records | Subscriptions Using Feature | Usage Hours | Errors per 1,000 Uses |
+|---|---:|---:|---:|---:|
+| feature_32 | 659 | 614 | 570.09 | 53.40 |
+| feature_15 | 640 | 606 | 546.39 | 52.71 |
+| feature_6 | 655 | 604 | 559.44 | 51.79 |
+| feature_20 | 643 | 590 | 540.89 | 47.09 |
+| feature_34 | 650 | 613 | 557.42 | 60.74 |
+| feature_12 | 659 | 624 | 572.63 | 54.94 |
+| feature_11 | 643 | 606 | 559.11 | 53.88 |
+| feature_2 | 642 | 607 | 537.69 | 61.46 |
+| feature_38 | 643 | 610 | 539.52 | 54.96 |
+| feature_26 | 649 | 616 | 548.99 | 64.45 |
+
+The table shows the first ten features from the SQL ranking by
+total recorded feature uses.
+
+**Key Findings**
+
+- Feature usage is distributed across 40 features.
+- feature_32 appears first in the total-uses ranking.
+- feature_12 has 624 distinct subscriptions with recorded usage.
+- feature_26 has 417 recorded errors and 64.45 errors per 1,000 uses.
+- Some features show higher normalized error frequency despite similar usage volumes.
+
+**Business Interpretation**
+
+High usage volume indicates product activity but does not necessarily
+demonstrate customer satisfaction or business value.
+
+Feature-level error frequency may help identify areas requiring
+engineering investigation.
+
+**Business Recommendations**
+
+- Monitor feature popularity and adoption.
+- Review features with higher normalized error frequency.
+- Compare adoption against eligible subscriptions.
+- Prioritize reliability improvements using usage and error metrics.
+- Investigate whether frequently used features contribute to retention.
+
+---
+
+### Query 63 – Monthly Feature Engagement Trends
+
+**2024 Results**
+
+| Month | Usage Records | Active Subscriptions | Total Feature Uses | Usage Hours | Errors |
+|---|---:|---:|---:|---:|---:|
+| January | 1,060 | 949 | 10,621 | 905.09 | 614 |
+| February | 1,016 | 931 | 10,247 | 841.54 | 598 |
+| March | 1,069 | 963 | 10,725 | 898.42 | 590 |
+| April | 1,020 | 922 | 10,131 | 858.20 | 605 |
+| May | 1,040 | 938 | 10,552 | 886.08 | 613 |
+| June | 1,013 | 915 | 10,106 | 873.86 | 539 |
+| July | 1,068 | 959 | 10,601 | 909.96 | 656 |
+| August | 1,060 | 958 | 10,559 | 861.89 | 555 |
+| September | 1,020 | 918 | 10,195 | 851.68 | 564 |
+| October | 1,137 | 1,027 | 11,450 | 928.03 | 570 |
+| November | 991 | 905 | 10,039 | 862.61 | 537 |
+| December | 1,076 | 973 | 10,738 | 884.46 | 575 |
+
+**Key Findings**
+
+- Monthly feature usage remains relatively stable throughout 2024.
+- October records the highest feature usage volume in 2024.
+- October also has the highest number of distinct subscriptions with usage.
+- November records lower usage than October.
+- December usage increases compared with November.
+- Product errors vary by month and do not always move proportionally with usage volume.
+
+**Business Interpretation**
+
+The monthly results provide a foundation for product engagement monitoring.
+
+However, monthly active subscriptions are not equivalent to monthly
+active customer accounts or unique active users.
+
+**Business Recommendations**
+
+- Track monthly active subscriptions and accounts separately.
+- Monitor changes in engagement across subscription cohorts.
+- Compare feature usage with customer acquisition and churn.
+- Investigate unusual changes in monthly usage.
+- Normalize error counts by usage volume.
+
+---
+
+### Query 64 – Feature Engagement by Subscription Plan Tier
+
+**Results**
+
+| Plan Tier | Usage Records | Subscriptions With Usage | Total Feature Uses | Usage Hours | Errors |
+|---|---:|---:|---:|---:|---:|
+| Enterprise | 8,580 | 1,723 | 86,076 | 7,312.89 | 4,855 |
+| Pro | 8,440 | 1,675 | 84,561 | 7,121.96 | 4,817 |
+| Basic | 7,980 | 1,602 | 79,888 | 6,691.56 | 4,435 |
+
+**Key Findings**
+
+- Enterprise subscriptions generate the highest total feature usage.
+- Pro follows closely behind Enterprise.
+- Basic generates 79,888 recorded feature uses.
+- All three plan tiers contribute substantial product activity.
+- Differences in total usage partly reflect differences in subscription counts.
+
+**Business Interpretation**
+
+Enterprise customers generate the largest aggregate feature usage,
+but this does not establish that individual Enterprise subscriptions
+are more engaged.
+
+Usage intensity should be normalized by subscription count,
+active days, and other relevant factors.
+
+**Business Recommendations**
+
+- Compare average feature usage per subscription.
+- Monitor plan-specific feature adoption.
+- Identify features that encourage upgrades.
+- Investigate underutilized premium features.
+- Develop engagement benchmarks for each plan tier.
+
+---
+
+### Query 65 – Top 20 Most Engaged Customer Accounts
+
+**Top 10 Accounts by Recorded Feature Uses**
+
+| Account | Industry | Country | Feature Uses | Usage Hours | Errors |
+|---|---|---|---:|---:|---:|
+| Company_10 | Cybersecurity | US | 1,053 | 90.63 | 55 |
+| Company_218 | DevTools | FR | 1,005 | 76.01 | 47 |
+| Company_82 | DevTools | US | 993 | 78.33 | 45 |
+| Company_57 | EdTech | IN | 924 | 72.64 | 59 |
+| Company_125 | DevTools | US | 922 | 71.34 | 47 |
+| Company_369 | Cybersecurity | US | 902 | 74.28 | 43 |
+| Company_232 | HealthTech | IN | 893 | 67.46 | 46 |
+| Company_413 | HealthTech | US | 885 | 76.76 | 76 |
+| Company_195 | EdTech | US | 871 | 72.75 | 55 |
+| Company_166 | DevTools | US | 869 | 69.80 | 54 |
+
+**Key Findings**
+
+- Company_10 has the highest recorded feature usage among the ranked accounts.
+- Company_218 ranks second with 1,005 feature uses.
+- Several DevTools customers appear among the most engaged accounts.
+- High-usage accounts also generate product errors.
+- Company_413 records 76 errors despite lower total usage than the top-ranked account.
+
+**Business Interpretation**
+
+Highly engaged accounts may represent important opportunities for
+customer advocacy, product feedback, and expansion.
+
+However, high activity alone does not prove customer satisfaction
+or low churn risk.
+
+**Business Recommendations**
+
+- Identify highly engaged customers for product feedback.
+- Investigate error frequency among high-usage accounts.
+- Evaluate opportunities for expansion and cross-selling.
+- Monitor changes in engagement over time.
+- Compare high-engagement accounts with churn and support history.
+
+---
+
+### Query 66 – Low-Engagement Customer Identification
+
+**Results**
+
+| Engagement Segment | Accounts | Average Feature Uses | Average Distinct Features |
+|---|---:|---:|---:|
+| Very Low Usage | 1 | 92.00 | 9.00 |
+| Low Usage | 250 | 362.02 | 23.60 |
+| Moderate Usage | 249 | 642.28 | 31.72 |
+
+**Key Findings**
+
+- One account falls into the Very Low Usage category.
+- Exactly 250 accounts fall into the Low Usage category.
+- Another 249 accounts fall into Moderate Usage.
+- No accounts fall into No Recorded Usage or High Usage under the selected thresholds.
+- Moderate-engagement accounts use more distinct features on average.
+
+**Business Interpretation**
+
+The selected thresholds divide most accounts between low and
+moderate engagement.
+
+These categories are exploratory and have not been validated against
+business outcomes.
+
+**Business Recommendations**
+
+- Calibrate engagement thresholds using the actual usage distribution.
+- Normalize engagement by customer size and subscription age.
+- Identify declining engagement trends.
+- Develop targeted onboarding and product education.
+- Evaluate whether engagement segments predict churn.
+
+---
+
+### Query 67 – Feature Engagement vs Subscription Churn Flags
+
+**Results**
+
+| Engagement Segment | Subscriptions | Churn-Flagged | Average Distinct Features | Churn-Flagged MRR |
+|---|---:|---:|---:|---:|
+| No Usage | 33 | 3 | 0.00 | $3,973 |
+| Very Low | 4,838 | 473 | 4.61 | $1,148,557 |
+| Low | 129 | 10 | 9.10 | $26,609 |
+
+**Calculated Churn-Flag Percentages**
+
+- No Usage: 9.09%
+- Very Low: 9.78%
+- Low: 7.75%
+
+**Key Findings**
+
+- Most subscription records fall into the Very Low engagement segment.
+- The Very Low segment contains 473 churn-flagged records.
+- The No Usage segment contains 33 subscriptions.
+- The Low segment has a lower churn-flag percentage than Very Low.
+- No subscriptions reach the Moderate or High usage thresholds.
+
+**Business Interpretation**
+
+The subscription-level engagement thresholds are poorly distributed
+for this dataset.
+
+A concentration of subscriptions in one segment limits the usefulness
+of the segmentation.
+
+These results do not establish a causal relationship between
+feature engagement and churn.
+
+**Business Recommendations**
+
+- Redefine subscription-level engagement thresholds.
+- Consider usage percentiles rather than fixed thresholds.
+- Normalize usage by subscription lifetime.
+- Compare engagement before churn events.
+- Evaluate engagement and churn within comparable cohorts.
+
+---
+
+### Query 68 – Feature Adoption by Customer Industry
+
+**Results**
+
+| Industry | Accounts With Usage | Subscriptions With Usage | Usage Hours | Errors |
+|---|---:|---:|---:|---:|
+| DevTools | 113 | 1,151 | 4,817.04 | 3,172 |
+| FinTech | 112 | 1,096 | 4,720.17 | 3,106 |
+| Cybersecurity | 100 | 999 | 4,253.66 | 2,799 |
+| HealthTech | 96 | 943 | 3,967.42 | 2,753 |
+| EdTech | 79 | 778 | 3,368.12 | 2,277 |
+
+**Key Findings**
+
+- DevTools has the highest aggregate usage duration.
+- FinTech follows closely behind DevTools.
+- Cybersecurity ranks third by usage duration.
+- EdTech has the lowest aggregate usage duration among the five industries.
+- Industries with more subscriptions generally contribute more total usage.
+
+**Business Interpretation**
+
+Industry-level totals reflect both customer population size and
+engagement activity.
+
+Aggregate usage should not be interpreted as normalized adoption
+or engagement intensity.
+
+**Business Recommendations**
+
+- Normalize usage by subscription and account.
+- Compare feature preferences by industry.
+- Investigate industry-specific product needs.
+- Develop targeted product education.
+- Evaluate industry-level engagement trends over time.
+
+---
+
+### Query 69 – Support Ticket Data Profiling
+
+**Results**
+
+| Metric | Result |
+|---|---:|
+| Total tickets | 2,000 |
+| Unique ticket IDs | 2,000 |
+| Tickets with closure timestamps | 2,000 |
+| Tickets without closure timestamps | 0 |
+| Escalated tickets | 95 |
+| Non-escalated tickets | 1,905 |
+| Missing satisfaction scores | 825 |
+| Available satisfaction scores | 1,175 |
+
+**Key Findings**
+
+- All 2,000 ticket IDs are unique.
+- All tickets have closure timestamps.
+- 95 tickets are marked as escalated.
+- The overall escalation percentage is 4.75%.
+- Satisfaction scores are missing for 825 tickets.
+- Approximately 41.25% of tickets have no recorded satisfaction rating.
+
+**Business Interpretation**
+
+Support ticket identifiers and closure timestamps are complete in
+the available dataset.
+
+However, customer satisfaction data has substantial missingness.
+
+A closure timestamp does not independently establish that the
+customer's issue was resolved satisfactorily.
+
+**Business Recommendations**
+
+- Improve satisfaction survey completion.
+- Monitor ticket escalation trends.
+- Validate closure and resolution status definitions.
+- Track support outcomes by customer and priority.
+- Establish data quality checks for support metrics.
+
+---
+
+### Query 70 – Monthly Support Ticket Trends
+
+**2024 Results**
+
+| Month | Tickets | Affected Accounts | Escalated | Escalation % | Avg. First Response (min) |
+|---|---:|---:|---:|---:|---:|
+| January | 84 | 78 | 4 | 4.76% | 85.85 |
+| February | 75 | 73 | 4 | 5.33% | 92.71 |
+| March | 92 | 83 | 3 | 3.26% | 92.98 |
+| April | 81 | 78 | 4 | 4.94% | 88.22 |
+| May | 81 | 78 | 7 | 8.64% | 90.52 |
+| June | 78 | 72 | 5 | 6.41% | 86.94 |
+| July | 70 | 67 | 2 | 2.86% | 88.61 |
+| August | 82 | 74 | 1 | 1.22% | 85.33 |
+| September | 96 | 91 | 7 | 7.29% | 89.78 |
+| October | 88 | 82 | 7 | 7.95% | 86.91 |
+| November | 84 | 76 | 5 | 5.95% | 78.95 |
+| December | 98 | 88 | 3 | 3.06% | 92.06 |
+
+**Key Findings**
+
+- December has the highest ticket volume in 2024, with 98 tickets.
+- July has the lowest ticket volume, with 70 tickets.
+- May has the highest escalation percentage at 8.64%.
+- November has the lowest average first-response time at 78.95 minutes.
+- Monthly ticket volume fluctuates without a consistently increasing trend.
+
+**Business Interpretation**
+
+Support workload varies across months.
+
+Changes in ticket volume may reflect customer growth, product
+issues, or normal operational variation.
+
+**Business Recommendations**
+
+- Monitor monthly ticket volume and escalation.
+- Compare ticket volume against active customer counts.
+- Review months with elevated escalation percentages.
+- Evaluate response time against defined service targets.
+- Investigate whether support workload affects customer satisfaction.
+
+---
+
+### Query 71 – Support Ticket Priority Analysis
+
+**Results**
+
+| Priority | Tickets | Escalated | Escalation % | Avg. First Response (min) | Avg. Resolution (hours) |
+|---|---:|---:|---:|---:|---:|
+| Urgent | 514 | 23 | 4.47% | 85.53 | 34.57 |
+| High | 510 | 24 | 4.71% | 91.44 | 36.96 |
+| Medium | 491 | 25 | 5.09% | 85.86 | 35.59 |
+| Low | 485 | 23 | 4.74% | 91.15 | 36.35 |
+
+**Key Findings**
+
+- Urgent tickets have the highest ticket count.
+- Medium-priority tickets have the highest escalation percentage.
+- Urgent tickets have the lowest average resolution time.
+- High-priority tickets have the highest average resolution time.
+- Response times are relatively similar across priorities.
+
+**Business Interpretation**
+
+Priority classification does not produce a simple ranking of
+resolution performance.
+
+Differences in ticket complexity and support workflows may
+affect the results.
+
+**Business Recommendations**
+
+- Validate priority assignment rules.
+- Define response and resolution targets by priority.
+- Investigate high-priority ticket resolution delays.
+- Monitor escalations by ticket priority.
+- Evaluate support team performance against agreed service levels.
+
+---
+
+### Query 72 – Support Resolution Performance
+
+**Results**
+
+| Resolution Segment | Tickets | Avg. Resolution Hours | Avg. First Response Minutes | Escalated |
+|---|---:|---:|---:|---:|
+| 48+ Hours | 697 | 59.97 | 87.77 | 40 |
+| 24–48 Hours | 626 | 35.04 | 89.29 | 18 |
+| 12–24 Hours | 354 | 17.16 | 88.75 | 24 |
+| 4–12 Hours | 230 | 7.53 | 86.53 | 10 |
+| Under 4 Hours | 93 | 1.88 | 92.11 | 3 |
+
+**Key Findings**
+
+- 697 tickets require at least 48 hours to resolve.
+- This represents 34.85% of all support tickets.
+- Another 626 tickets require between 24 and 48 hours.
+- A total of 1,323 tickets, or 66.15%, require at least 24 hours.
+- Only 93 tickets are resolved in under four hours.
+- The 48+ hour category contains the largest number of escalated tickets.
+
+**Business Interpretation**
+
+Longer resolution durations represent a potential customer
+experience concern.
+
+However, service-level compliance cannot be determined without
+defined targets and applicable ticket conditions.
+
+**Business Recommendations**
+
+- Review tickets with resolution times of 48 hours or longer.
+- Identify operational bottlenecks.
+- Analyze escalated tickets with long resolution times.
+- Establish resolution performance targets.
+- Monitor the relationship between resolution duration and satisfaction.
+
+---
+
+### Query 73 – Customer Satisfaction Analysis
+
+**Results**
+
+| Priority | Tickets | Rated Tickets | Avg. Satisfaction | Avg. Resolution Hours | Response % |
+|---|---:|---:|---:|---:|---:|
+| Low | 485 | 287 | 4.02 | 36.35 | 59.18% |
+| High | 510 | 295 | 4.00 | 36.96 | 57.84% |
+| Urgent | 514 | 301 | 3.97 | 34.57 | 58.56% |
+| Medium | 491 | 292 | 3.93 | 35.59 | 59.47% |
+
+**Key Findings**
+
+- Low-priority tickets have the highest average satisfaction score.
+- Medium-priority tickets have the lowest average score.
+- Average satisfaction ranges from 3.93 to 4.02.
+- Satisfaction response percentages range from 57.84% to 59.47%.
+- A total of 825 tickets have missing satisfaction scores.
+
+**Business Interpretation**
+
+Customer satisfaction scores are similar across ticket priorities.
+
+However, missing ratings may introduce response bias.
+
+The scoring scale should be confirmed before using the results
+as a formal customer satisfaction KPI.
+
+**Business Recommendations**
+
+- Improve satisfaction survey coverage.
+- Investigate lower-scoring support experiences.
+- Compare satisfaction with resolution time.
+- Analyze satisfaction for escalated tickets.
+- Monitor satisfaction trends by customer segment.
+
+---
+
+### Query 74 – Support Activity vs Account Churn Flags
+
+**Results**
+
+| Support Segment | Accounts | Churn-Flagged Accounts | Churn-Flag % | Avg. Tickets | Avg. Satisfaction |
+|---|---:|---:|---:|---:|---:|
+| No Tickets | 8 | 2 | 25.00% | 0.00 | N/A |
+| 1 Ticket | 30 | 8 | 26.67% | 1.00 | 3.68 |
+| 2–3 Tickets | 176 | 45 | 25.57% | 2.58 | 3.96 |
+| 4–6 Tickets | 235 | 41 | 17.45% | 4.80 | 4.00 |
+| 7+ Tickets | 51 | 14 | 27.45% | 7.63 | 3.90 |
+
+**Key Findings**
+
+- Accounts with 7+ tickets have the highest observed churn-flag percentage.
+- Accounts with 4–6 tickets have the lowest churn-flag percentage.
+- Accounts with one ticket have the lowest average satisfaction.
+- Eight accounts have no recorded support tickets.
+- Churn-flag percentages do not consistently increase with ticket volume.
+
+**Business Interpretation**
+
+Support ticket volume alone is not a reliable churn predictor
+in the observed data.
+
+The analysis uses the account-level `churn_flag`, which differs
+from subscription-level churn flags and churn events.
+
+**Business Recommendations**
+
+- Combine support metrics with product engagement and account history.
+- Investigate repeated escalations and unresolved issues.
+- Analyze satisfaction and churn within comparable customer cohorts.
+- Avoid interpreting support volume as a causal churn driver.
+- Monitor account-level support experiences over time.
+
+---
+
+### Query 75 – Combined Engagement and Support Risk Segmentation
+
+**Results**
+
+| Attention Segment | Accounts | Avg. Feature Uses | Avg. Support Tickets | Escalations |
+|---|---:|---:|---:|---:|
+| High Attention | 1 | 92.00 | 6.00 | 1 |
+| Elevated Attention | 252 | 364.41 | 4.02 | 42 |
+| Moderate Attention | 247 | 642.11 | 3.97 | 52 |
+
+**Key Findings**
+
+- One account is classified as High Attention.
+- 252 accounts are classified as Elevated Attention.
+- 247 accounts are classified as Moderate Attention.
+- No accounts fall into Standard Monitoring.
+- Elevated Attention accounts have lower average feature usage than Moderate Attention accounts.
+- The Moderate Attention segment has more total escalations than the Elevated Attention segment.
+
+**Business Interpretation**
+
+The segmentation combines feature engagement and support activity
+to identify accounts requiring further review.
+
+However, the fixed thresholds are exploratory and do not represent
+validated probabilities of customer churn.
+
+The absence of Standard Monitoring accounts indicates that
+the segmentation should be recalibrated.
+
+**Business Recommendations**
+
+- Review the High Attention account individually.
+- Recalibrate engagement and support thresholds.
+- Incorporate subscription tenure and account size.
+- Validate risk segments against future churn outcomes.
+- Develop an explainable customer health scoring framework.
+
+---
+
+## 3. Strategic Business Recommendations
+
+### Recommendation 1 – Improve Product Engagement Monitoring
+
+**Finding:** 4,967 subscriptions have recorded feature usage.
+
+**Actions:**
+- Track monthly active subscriptions.
+- Establish consistent engagement metrics.
+- Monitor feature adoption by customer segment.
+- Identify declining engagement trends.
+- Compare usage with customer lifecycle stages.
+
+**Expected Benefit:**
+Improved visibility into customer product adoption and engagement.
+
+### Recommendation 2 – Investigate Feature Reliability
+
+**Finding:** 14,107 feature errors are recorded.
+
+**Actions:**
+- Monitor errors per 1,000 feature uses.
+- Investigate features with elevated error frequency.
+- Compare errors across subscription plans.
+- Review beta feature performance.
+- Prioritize engineering improvements using normalized metrics.
+
+**Expected Benefit:**
+Better product reliability and customer experience.
+
+### Recommendation 3 – Reduce Long Support Resolution Times
+
+**Finding:** 697 tickets require 48 hours or longer to resolve.
+
+**Actions:**
+- Review long-running support tickets.
+- Identify recurring resolution bottlenecks.
+- Improve escalation workflows.
+- Monitor resolution times by priority.
+- Establish measurable service targets.
+
+**Expected Benefit:**
+Faster support resolution and improved customer experience.
+
+### Recommendation 4 – Improve Customer Satisfaction Data Quality
+
+**Finding:** 825 support tickets lack satisfaction scores.
+
+**Actions:**
+- Improve post-resolution survey collection.
+- Monitor response rates by priority.
+- Investigate survey nonresponse.
+- Review customer feedback for recurring issues.
+- Establish satisfaction reporting standards.
+
+**Expected Benefit:**
+More representative customer satisfaction reporting.
+
+### Recommendation 5 – Build Better Customer Health Segmentation
+
+**Finding:** Existing engagement thresholds produce heavily
+concentrated customer segments.
+
+**Actions:**
+- Use percentile-based engagement categories.
+- Normalize usage by subscription age.
+- Include support escalations and satisfaction.
+- Compare segments with observed churn events.
+- Validate risk categories before operational deployment.
+
+**Expected Benefit:**
+More meaningful identification of accounts requiring attention.
+
+### Recommendation 6 – Strengthen Engagement and Support Data Quality
+
+**Finding:** Feature usage contains 21 duplicate ID occurrences.
+
+**Actions:**
+- Investigate duplicate identifiers.
+- Validate subscription and account relationships.
+- Establish uniqueness checks.
+- Monitor missing satisfaction scores.
+- Document source-system metric definitions.
+
+**Expected Benefit:**
+Greater confidence in product and customer support reporting.
+
+---
+
+## 4. Data Quality Findings and Analytical Limitations
+
+### 4.1 Duplicate Feature Usage Identifiers
+
+The feature usage table contains 25,000 records but only
+24,979 unique usage IDs.
+
+Duplicate IDs require investigation before deduplication rules
+can be established.
+
+### 4.2 Engagement Does Not Equal Customer Retention
+
+High product usage does not automatically imply customer retention.
+
+Retention analysis requires time-based customer lifecycle information.
+
+### 4.3 Subscription-Level and Account-Level Metrics Differ
+
+Feature usage is linked to subscriptions.
+
+Support tickets are linked to accounts.
+
+Joining these tables without appropriate aggregation can
+duplicate support records and distort results.
+
+### 4.4 Usage Thresholds Are Exploratory
+
+The engagement categories use fixed thresholds that are not
+calibrated to the dataset distribution.
+
+They should not be treated as validated customer health scores.
+
+### 4.5 Missing Satisfaction Ratings
+
+825 tickets have missing satisfaction scores.
+
+Reported averages apply only to rated tickets and may not
+represent the full support population.
+
+### 4.6 Support Ticket Closure vs Resolution Quality
+
+All tickets contain closure timestamps.
+
+This does not independently confirm satisfactory resolution.
+
+### 4.7 No Support Category Field
+
+The support ticket dataset does not include a ticket category
+or issue-type field.
+
+Therefore, category-level support analysis is unavailable.
+
+### 4.8 No Validated SLA Targets
+
+The dataset contains response and resolution durations but
+does not define contractual service-level targets.
+
+SLA compliance cannot be calculated reliably.
+
+### 4.9 Account Churn Indicators Differ From Subscription Churn
+
+Queries 74–75 use `accounts.churn_flag`.
+
+Day 3 primarily examined `subscriptions.churn_flag`
+and records in `churn_events`.
+
+These indicators should not be assumed to represent
+identical customer churn outcomes.
+
+### 4.10 Usage Activity May Not Reflect Valid Subscription Periods
+
+The queries aggregate recorded feature usage without validating
+every usage date against subscription start and end dates.
+
+Future analysis should validate subscription lifecycle boundaries.
+
+### 4.11 Feature Error Counts Need Consistent Definitions
+
+The dataset contains `error_count` and `usage_count`.
+
+Errors per 1,000 uses are useful descriptive measures,
+but their interpretation depends on how the source system
+defines errors and feature uses.
+
+### 4.12 Customer Risk Segmentation Is Not Predictive
+
+The attention segments are rule-based classifications.
+
+They have not been trained or validated against future churn
+outcomes and should not be presented as predictive scores.
+
+---
+
+## 5. Day 4 KPI Summary
+
+| KPI | Result |
+|---|---:|
+| Total feature usage records | 25,000 |
+| Unique usage IDs | 24,979 |
+| Duplicate ID occurrences | 21 |
+| Subscriptions with usage | 4,967 |
+| Subscription usage coverage | 99.34% |
+| Distinct features | 40 |
+| Total feature uses | 250,525 |
+| Total usage hours | 21,126.41 |
+| Total feature errors | 14,107 |
+| Beta usage records | 2,544 |
+| Most-used feature in query ranking | feature_32 |
+| Top engaged account | Company_10 |
+| Top account feature uses | 1,053 |
+| Enterprise feature uses | 86,076 |
+| Pro feature uses | 84,561 |
+| Basic feature uses | 79,888 |
+| Total support tickets | 2,000 |
+| Escalated tickets | 95 |
+| Escalation percentage | 4.75% |
+| Missing satisfaction scores | 825 |
+| Satisfaction response percentage | 58.75% |
+| Tickets with 48+ hour resolution | 697 |
+| Tickets with 24+ hour resolution | 1,323 |
+| Highest satisfaction priority | Low |
+| Lowest satisfaction priority | Medium |
+| High Attention accounts | 1 |
+| Elevated Attention accounts | 252 |
+| Moderate Attention accounts | 247 |
+| Standard Monitoring accounts | 0 |
+
+---
+
+## 6. Final Day 4 Conclusion
+
+Day 4 successfully analyzed customer engagement, feature adoption,
+support ticket performance, customer satisfaction, and exploratory
+customer health indicators using 15 DuckDB SQL queries.
+
+The analysis identified several important findings:
+
+1. Feature usage is recorded for nearly all subscriptions.
+2. Product activity is distributed across 40 features.
+3. Enterprise subscriptions generate the highest aggregate usage.
+4. Engagement thresholds require calibration to produce useful segments.
+5. Product errors provide an opportunity for reliability analysis.
+6. Long support resolution times deserve operational investigation.
+7. Customer satisfaction reporting is limited by missing ratings.
+8. Support ticket volume alone does not establish customer churn risk.
+9. Combined engagement and support metrics can support a more
+   comprehensive customer health framework.
+10. Data quality and consistent metric definitions remain important
+    prerequisites for reliable operational reporting.
+
+The findings provide a foundation for improving product adoption,
+customer experience, support operations, and customer retention analysis.
+
+Future analysis should incorporate account lifecycle information,
+subscription revenue movements, reactivation behavior, and validated
+customer health metrics.
+
+**Day 4 Status:** Completed – Queries 61–75 executed and documented.
