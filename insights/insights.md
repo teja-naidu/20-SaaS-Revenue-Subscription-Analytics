@@ -2361,4 +2361,777 @@ Future analysis should incorporate account lifecycle information,
 subscription revenue movements, reactivation behavior, and validated
 customer health metrics.
 
-**Day 4 Status:** Completed – Queries 61–75 executed and documented.
+# Day 5 – Advanced SaaS Revenue, Retention & Customer Lifecycle Analytics
+
+## 1. Project Overview
+
+**Project:** SaaS Revenue & Subscription Analytics  
+**SQL Engine:** DuckDB  
+**Analysis Period:** 2023–2024  
+**SQL Queries:** 76–90  
+**Analysis Focus:** Revenue movements, churn, reactivation, customer cohorts, revenue concentration, and customer health.
+
+### Objectives
+
+The final phase of this project focuses on:
+
+- Analyzing subscription revenue and upgrade/downgrade patterns.
+- Identifying accounts and industries with churn-associated revenue exposure.
+- Evaluating churn events and reactivation indicators.
+- Comparing customer signup cohorts and subscription start-year cohorts.
+- Understanding revenue concentration across customer accounts.
+- Developing an exploratory customer health scoring framework.
+- Consolidating key SaaS metrics into an executive performance scorecard.
+
+---
+
+## 2. Executive Summary
+
+Day 5 analyzes 5,000 subscription records belonging to 500 customer accounts.
+
+The dataset contains $11,338,747 in summed recorded subscription MRR, 486 churn-flagged subscription records, and 600 churn events.
+
+Of the churn events, 61 carry a reactivation flag, representing 10.17%.
+
+### Key Performance Indicators
+
+| KPI | Result |
+|---|---:|
+| Customer accounts | 500 |
+| Subscription records | 5,000 |
+| Summed recorded MRR | $11,338,747 |
+| Average recorded MRR per subscription | $2,267.75 |
+| Churn-flagged subscription records | 486 |
+| Subscription churn-flag percentage | 9.72% |
+| Churn-associated MRR | $1,179,139 |
+| Upgrade-flagged records | 529 |
+| Downgrade-flagged records | 218 |
+| Records carrying both movement flags | 23 |
+| Churn events | 600 |
+| Accounts with churn events | 352 |
+| Reactivation-flagged events | 61 |
+| Reactivation-event percentage | 10.17% |
+| Top 10 accounts' share of recorded MRR | 8.51% |
+| Top 50 accounts' share of recorded MRR | 26.88% |
+| High Attention accounts | 15 |
+| Elevated Attention accounts | 224 |
+
+**Important:** Summed subscription MRR is not necessarily active MRR at a single reporting date. Churn-associated MRR is not confirmed realized revenue loss.
+
+---
+
+## 3. Detailed SQL Analysis and Business Insights
+
+### Query 76 – Subscription Revenue and Lifecycle Overview
+
+**Findings**
+
+- The dataset contains 5,000 subscription records across 500 accounts.
+- Summed recorded MRR equals $11,338,747.
+- Average recorded MRR per subscription is approximately $2,267.75.
+- 486 subscription records carry churn flags.
+- Churn-associated MRR totals $1,179,139.
+- 529 records carry upgrade flags and 218 carry downgrade flags.
+
+**Business Interpretation**
+
+The subscription dataset provides a broad view of revenue associated with different customer plans and lifecycle indicators.
+
+Approximately 10.40% of summed recorded MRR is associated with churn-flagged subscription records. This indicates revenue exposure in the data, not a confirmed loss.
+
+**Business Recommendations**
+
+1. Build a point-in-time active MRR calculation using subscription effective dates.
+2. Monitor churn-associated revenue separately from realized revenue loss.
+3. Establish consistent definitions for upgrades, downgrades, and cancellations.
+4. Create a monthly subscription revenue reporting framework.
+
+---
+
+### Query 77 – Upgrade and Downgrade Revenue Exposure
+
+| Movement Category | Records | Average Recorded MRR | Churn-Flagged Records | Churn-Flag % |
+|---|---:|---:|---:|---:|
+| Neither | 4,276 | $2,258.38 | 419 | 9.80% |
+| Upgrade Only | 506 | $2,416.13 | 42 | 8.30% |
+| Downgrade Only | 195 | $2,148.37 | 21 | 10.77% |
+| Both Upgrade and Downgrade | 23 | $1,758.00 | 4 | 17.39% |
+
+**Findings**
+
+- Most subscriptions, 4,276 records, have neither movement flag.
+- Upgrade-only records outnumber downgrade-only records.
+- Upgrade-only subscriptions have a lower churn-flag percentage than downgrade-only subscriptions.
+- The 23 records with both flags have the highest observed churn-flag percentage, at 17.39%.
+
+**Business Interpretation**
+
+Upgrade-associated subscriptions show relatively favorable churn indicators.
+
+However, upgrade and downgrade flags do not provide historical revenue changes. The analysis cannot establish the monetary value of expansion or contraction.
+
+The records carrying both flags require additional investigation to determine whether they represent legitimate sequential movements or inconsistent data.
+
+**Recommendations**
+
+- Investigate overlapping movement flags.
+- Track previous and current subscription MRR.
+- Calculate actual expansion and contraction MRR once historical snapshots are available.
+- Analyze downgrade patterns before churn events.
+
+---
+
+### Query 78 – Revenue Movement Flags by Plan Tier
+
+| Plan Tier | Subscription Records | Upgrade-Flag % | Downgrade-Flag % | Downgrade-Associated MRR |
+|---|---:|---:|---:|---:|
+| Enterprise | 1,723 | 11.26% | 3.95% | $318,002 |
+| Pro | 1,675 | 11.58% | 5.37% | $114,023 |
+| Basic | 1,602 | 8.80% | 3.75% | $27,341 |
+
+**Findings**
+
+- Pro has the highest upgrade-flag percentage at 11.58%.
+- Pro also has the highest downgrade-flag percentage at 5.37%.
+- Enterprise has the largest downgrade-associated MRR at $318,002.
+- Basic has the lowest upgrade-flag percentage at 8.80%.
+
+**Business Interpretation**
+
+Enterprise subscriptions represent the largest monetary exposure associated with downgrade flags, while Pro shows the highest proportion of downgrade-flagged records.
+
+These figures represent the MRR of flagged subscriptions, not the amounts by which revenue declined.
+
+**Recommendations**
+
+- Prioritize Enterprise downgrade reviews based on account value.
+- Investigate upgrade and downgrade behavior within Pro.
+- Identify obstacles to Basic-to-Pro upgrades.
+- Compare movements across subscription tenure and billing frequency.
+
+---
+
+### Query 79 – Revenue Movement Flags by Industry
+
+| Industry | Accounts | Subscription Records | Churn-Flagged Records | Churn-Associated MRR |
+|---|---:|---:|---:|---:|
+| FinTech | 112 | 1,100 | 96 | $253,446 |
+| DevTools | 113 | 1,158 | 125 | $238,611 |
+| Cybersecurity | 100 | 1,008 | 103 | $279,062 |
+| EdTech | 79 | 785 | 66 | $198,743 |
+| HealthTech | 96 | 949 | 96 | $209,277 |
+
+**Findings**
+
+- DevTools has the highest number of churn-flagged subscription records, at 125.
+- Cybersecurity has the highest churn-associated MRR, at $279,062.
+- FinTech has 96 churn-flagged records and $253,446 in associated MRR.
+- EdTech has the fewest churn-flagged records, at 66.
+
+**Business Interpretation**
+
+Industry rankings differ depending on whether churn is measured by record count or associated revenue.
+
+Cybersecurity deserves attention from a revenue-exposure perspective, while DevTools has the greatest flagged subscription volume.
+
+**Recommendations**
+
+- Develop industry-specific retention reporting.
+- Prioritize high-value churn-associated accounts.
+- Compare churn patterns with feature engagement and support performance.
+- Evaluate customer success strategies by industry.
+
+---
+
+### Query 80 – Customer Expansion and Contraction Flag Patterns
+
+| Account Movement Segment | Accounts | Subscription Records | Recorded MRR | Average Account MRR |
+|---|---:|---:|---:|---:|
+| Upgrade Flags Only | 190 | 1,939 | $4,556,677 | $23,982.51 |
+| No Movement Flags | 133 | 1,129 | $2,514,964 | $18,909.50 |
+| Both Movement Types | 117 | 1,326 | $2,950,432 | $25,217.37 |
+| Downgrade Flags Only | 60 | 606 | $1,316,674 | $21,944.57 |
+
+**Findings**
+
+- 190 accounts have upgrade flags without downgrade flags.
+- 60 accounts have downgrade flags without upgrade flags.
+- 117 accounts have both movement types across their subscription records.
+- 133 accounts have no movement flags.
+- Accounts with both movement types have the highest average summed recorded MRR.
+
+**Business Interpretation**
+
+Movement patterns suggest that customers may experience different subscription lifecycle changes across records.
+
+An account containing both movement types does not necessarily indicate contradictory data, because the flags may occur on different subscriptions or at different times.
+
+**Recommendations**
+
+- Build chronological account movement histories.
+- Separate subscription-level movement flags from account-level classifications.
+- Identify repeated downgrades and subsequent churn.
+- Evaluate upgrade opportunities among stable accounts.
+
+---
+
+### Query 81 – Account Revenue Exposure and Subscription Churn
+
+**Top 10 Accounts by Churn-Associated MRR**
+
+| Account | Industry | Churn-Flagged Records | Churn-Associated MRR | Share of Account Recorded MRR |
+|---|---|---:|---:|---:|
+| Company_358 | EdTech | 6 | $60,465 | 46.46% |
+| Company_492 | Cybersecurity | 2 | $26,080 | 50.00% |
+| Company_4 | HealthTech | 2 | $23,406 | 48.00% |
+| Company_403 | FinTech | 1 | $23,283 | 16.86% |
+| Company_47 | DevTools | 4 | $21,066 | 55.13% |
+| Company_303 | FinTech | 1 | $20,497 | 53.67% |
+| Company_278 | Cybersecurity | 2 | $19,502 | 66.26% |
+| Company_376 | Cybersecurity | 2 | $19,502 | 67.74% |
+| Company_163 | Cybersecurity | 3 | $19,144 | 42.72% |
+| Company_91 | HealthTech | 2 | $19,104 | 32.71% |
+
+**Findings**
+
+- Company_358 has the highest churn-associated MRR at $60,465.
+- Company_376 has 67.74% of its summed recorded MRR associated with churn-flagged subscriptions.
+- Company_278 has a similarly high exposure percentage of 66.26%.
+- Several Cybersecurity accounts appear in the highest-exposure group.
+
+**Business Interpretation**
+
+The results identify accounts for further investigation based on the monetary value and concentration of churn-associated subscription records.
+
+An account may contain both churn-flagged and non-churn-flagged subscriptions.
+
+**Recommendations**
+
+- Review the highest-exposure accounts first.
+- Examine customer engagement, support history, and subscription tenure.
+- Validate which flagged subscriptions actually terminated.
+- Develop account-level revenue risk monitoring.
+
+---
+
+### Query 82 – Churn Event and Reactivation Overview
+
+| Metric | Result |
+|---|---:|
+| Total churn events | 600 |
+| Unique churn event IDs | 600 |
+| Accounts with churn events | 352 |
+| Reactivation-flagged events | 61 |
+| Events without reactivation flags | 539 |
+| Missing reactivation flags | 0 |
+| Reactivation-event percentage | 10.17% |
+
+**Findings**
+
+- All 600 churn event IDs are unique.
+- Churn events affect 352 distinct customer accounts.
+- 61 events carry reactivation flags.
+- No missing reactivation flags were identified.
+
+**Business Interpretation**
+
+Approximately one in ten churn event records is marked as associated with reactivation.
+
+This is an event-level percentage, not a customer win-back rate. A customer may have multiple churn events, and the timing and definition of the reactivation flag require confirmation.
+
+**Recommendations**
+
+- Track distinct reactivated customers.
+- Calculate time between churn and reactivation.
+- Compare pre-churn and post-reactivation revenue.
+- Investigate customer characteristics associated with reactivation.
+
+---
+
+### Query 83 – Reactivation Trends by Churn Event Month
+
+**Selected Monthly Results**
+
+| Month | Churn Events | Reactivation-Flagged Events | Reactivation % |
+|---|---:|---:|---:|
+| Jan 2024 | 20 | 0 | 0.00% |
+| Feb 2024 | 10 | 2 | 20.00% |
+| Mar 2024 | 24 | 1 | 4.17% |
+| Apr 2024 | 25 | 3 | 12.00% |
+| May 2024 | 27 | 3 | 11.11% |
+| Jun 2024 | 40 | 5 | 12.50% |
+| Jul 2024 | 35 | 3 | 8.57% |
+| Aug 2024 | 42 | 5 | 11.90% |
+| Sep 2024 | 53 | 7 | 13.21% |
+| Oct 2024 | 66 | 6 | 9.09% |
+| Nov 2024 | 68 | 9 | 13.24% |
+| Dec 2024 | 117 | 11 | 9.40% |
+
+**Findings**
+
+- December 2024 has the highest churn event volume, at 117.
+- December also has the highest number of reactivation-flagged events, at 11.
+- November records nine reactivation-flagged events.
+- February has the highest 2024 reactivation-event percentage at 20%, based on only ten churn events.
+- Churn event volume increases substantially toward the end of 2024.
+
+**Business Interpretation**
+
+Higher reactivation counts in later months partly reflect larger churn event volumes.
+
+The query groups events by churn date, so these results should not be interpreted as the actual calendar dates on which customers reactivated.
+
+**Recommendations**
+
+- Investigate the increase in late-2024 churn events.
+- Record actual reactivation dates separately.
+- Compare reactivation outcomes over consistent observation windows.
+- Analyze win-back campaign effectiveness once campaign data becomes available.
+
+---
+
+### Query 84 – Reactivation by Churn Reason
+
+| Churn Reason | Churn Events | Affected Accounts | Reactivation-Event % | Events With Preceding Downgrade |
+|---|---:|---:|---:|---:|
+| Features | 114 | 104 | 11.40% | 9 |
+| Support | 104 | 95 | 5.77% | 13 |
+| Budget | 104 | 94 | 11.54% | 6 |
+| Unknown | 95 | 86 | 9.47% | 9 |
+| Competitor | 92 | 79 | 13.04% | 12 |
+| Pricing | 91 | 86 | 9.89% | 4 |
+
+**Findings**
+
+- Feature-related churn is the largest category, with 114 events.
+- Support-related and budget-related churn each have 104 events.
+- Competitor-related churn has the highest reactivation-event percentage, at 13.04%.
+- Support-related churn has the lowest reactivation-event percentage, at 5.77%.
+- Support-related events have the highest number of preceding downgrade indicators, at 13.
+
+**Business Interpretation**
+
+The low reactivation percentage associated with support-related churn suggests that these events deserve further investigation.
+
+However, the observed differences do not establish that specific churn reasons cause reactivation outcomes.
+
+**Recommendations**
+
+- Review recurring feature-related churn reasons.
+- Investigate support experiences preceding churn.
+- Develop targeted win-back strategies by churn reason.
+- Examine competitor-related reactivation cases for actionable insights.
+- Improve classification of unknown churn reasons.
+
+---
+
+### Query 85 – Customer Signup Cohort and Churn Flag Analysis
+
+**Selected Results**
+
+| Signup Cohort | Accounts | Churn-Flagged Accounts | Calculated Flag % |
+|---|---:|---:|---:|
+| Jan 2023 | 17 | 4 | 23.53% |
+| Feb 2023 | 18 | 7 | 38.89% |
+| Oct 2023 | 20 | 7 | 35.00% |
+| Mar 2024 | 27 | 4 | 14.81% |
+| Jul 2024 | 26 | 3 | 11.54% |
+| Sep 2024 | 25 | 9 | 36.00% |
+| Oct 2024 | 31 | 7 | 22.58% |
+| Nov 2024 | 32 | 4 | 12.50% |
+| Dec 2024 | 17 | 1 | 5.88% |
+
+**Findings**
+
+- November 2024 has the largest signup cohort, with 32 accounts.
+- October 2024 follows with 31 accounts.
+- September 2024 has nine churn-flagged accounts, the highest count among the displayed cohorts.
+- February 2023 has a 38.89% churn-flag percentage.
+- December 2024 has a relatively low churn-flag percentage of 5.88%.
+
+**Business Interpretation**
+
+Customer churn indicators vary across signup cohorts.
+
+However, newer cohorts have shorter observation periods. Their lower churn-flag percentages should not automatically be interpreted as stronger retention.
+
+**Recommendations**
+
+- Compare cohorts at consistent ages.
+- Build month-1, month-3, month-6, and month-12 retention measures.
+- Investigate cohorts with elevated churn flags.
+- Analyze acquisition channels and onboarding experiences.
+- Validate account-level churn flags against churn event history.
+
+---
+
+### Query 86 – Subscription Start-Year Cohort Analysis
+
+| Start Year | Subscription Records | Churn-Flag % | Recorded MRR | Churn-Associated MRR |
+|---|---:|---:|---:|---:|
+| 2023 | 666 | 12.76% | $1,313,608 | $145,053 |
+| 2024 | 4,334 | 9.25% | $10,025,139 | $1,034,086 |
+
+**Findings**
+
+- Most subscription records began in 2024.
+- The 2023 cohort has a higher churn-flag percentage.
+- The 2024 cohort has greater aggregate recorded MRR.
+- The 2024 cohort also has greater churn-associated MRR in absolute terms.
+
+**Business Interpretation**
+
+The 2023 cohort has a longer opportunity to accumulate churn indicators.
+
+Therefore, these results should not be interpreted as proof that 2024 subscriptions retain customers more effectively.
+
+**Recommendations**
+
+- Compare subscriptions at equivalent lifecycle ages.
+- Develop survival and retention curves.
+- Monitor churn by plan tier within each cohort.
+- Analyze revenue retention after subscription activation.
+
+---
+
+### Query 87 – Revenue Concentration by Account Ranking
+
+| Revenue Segment | Accounts | Recorded MRR | Share of Total |
+|---|---:|---:|---:|
+| Top 10 | 10 | $964,589 | 8.51% |
+| Rank 11–50 | 40 | $2,083,437 | 18.37% |
+| Rank 51–100 | 50 | $1,803,410 | 15.90% |
+| Remaining Accounts | 400 | $6,487,311 | 57.21% |
+
+**Findings**
+
+- The top ten accounts contribute 8.51% of summed recorded MRR.
+- The top 50 accounts contribute approximately 26.88%.
+- The top 100 accounts contribute approximately 42.78%.
+- The remaining 400 accounts contribute approximately 57.21%.
+
+**Business Interpretation**
+
+Recorded subscription revenue is distributed across a broad customer base rather than being concentrated entirely among a few accounts.
+
+Nevertheless, individual high-value customers may still represent meaningful retention priorities.
+
+**Recommendations**
+
+- Monitor revenue concentration over time.
+- Track high-value accounts separately.
+- Establish customer concentration indicators.
+- Evaluate revenue exposure by account and industry.
+- Diversify acquisition and expansion opportunities.
+
+---
+
+### Query 88 – Customer Lifetime Value Proxy
+
+**Top Accounts in the Annualized Recorded-MRR Ranking**
+
+| Rank | Account | Industry | Churn-Flagged Records |
+|---|---|---|---:|
+| 1 | Company_403 | FinTech | 1 |
+| 2 | Company_166 | DevTools | 1 |
+| 3 | Company_358 | EdTech | 6 |
+| 4 | Company_368 | EdTech | 1 |
+| 5 | Company_337 | Cybersecurity | 1 |
+| 6 | Company_130 | EdTech | 0 |
+| 7 | Company_488 | EdTech | 1 |
+| 8 | Company_23 | EdTech | 0 |
+| 9 | Company_475 | FinTech | 1 |
+| 10 | Company_480 | EdTech | 0 |
+
+**Findings**
+
+- Company_403 ranks first by the annualized recorded-MRR proxy.
+- Company_166 ranks second.
+- Company_358 ranks third and has six churn-flagged subscription records.
+- Several EdTech accounts appear among the top-ranked customers.
+- High recorded revenue and churn indicators can coexist.
+
+**Business Interpretation**
+
+The calculation multiplies summed account-level recorded MRR by 12.
+
+This is not true customer lifetime value. It does not incorporate realized revenue over time, gross margin, acquisition cost, or expected customer lifetime.
+
+**Recommendations**
+
+- Rename the measure to `annualized_recorded_mrr_proxy` in dashboards.
+- Build realized account revenue histories.
+- Estimate customer lifetime using observed retention.
+- Include gross margin when developing a true CLV model.
+- Compare customer value with acquisition and retention costs.
+
+---
+
+### Query 89 – Multi-Factor Customer Health Assessment
+
+| Health Segment | Accounts | Average Feature Uses | Average Support Tickets | Average Attention Score |
+|---|---:|---:|---:|---:|
+| High Attention | 15 | 342.47 | 4.53 | 5.07 |
+| Elevated Attention | 224 | 468.02 | 4.28 | 3.33 |
+| Moderate Attention | 218 | 525.76 | 3.71 | 1.64 |
+| Standard Monitoring | 43 | 603.19 | 3.86 | 0.00 |
+
+**Findings**
+
+- 15 accounts fall into High Attention.
+- 224 accounts fall into Elevated Attention.
+- 218 accounts fall into Moderate Attention.
+- 43 accounts fall into Standard Monitoring.
+- Average feature usage generally increases as attention scores decrease.
+- High Attention accounts have the highest average support ticket volume.
+
+**Business Interpretation**
+
+The model combines engagement, support escalation, satisfaction, and subscription churn flags into a rule-based attention score.
+
+The segmentation is more differentiated than Day 4's initial framework.
+
+However, the score includes subscription churn flags as an input, so comparing the score against churn outcomes requires careful separation of predictors and outcomes.
+
+**Recommendations**
+
+- Review High Attention accounts individually.
+- Prioritize Elevated Attention accounts for engagement analysis.
+- Validate score thresholds against future outcomes.
+- Avoid using current churn flags to predict the same churn events.
+- Develop time-based customer health scores using historical features.
+
+---
+
+### Query 90 – Executive SaaS Performance Scorecard
+
+**Results**
+
+| KPI | Result |
+|---|---:|
+| Customer accounts | 500 |
+| Subscription records | 5,000 |
+| Summed recorded MRR | $11,338,747 |
+| Churn-flagged subscription records | 486 |
+| Subscription churn-flag percentage | 9.72% |
+| Feature usage records | 25,000 |
+| Subscriptions with recorded usage | 4,967 |
+| Total recorded feature uses | 250,525 |
+| Feature errors | 14,107 |
+| Support tickets | 2,000 |
+| Escalated tickets | 95 |
+| Churn events | 600 |
+| Accounts with churn events | 352 |
+| Reactivation-flagged events | 61 |
+
+**Findings**
+
+- The scorecard combines revenue, subscription lifecycle, feature engagement, customer support, and churn metrics.
+- It provides a consolidated view of SaaS operational performance.
+- The data supports several useful descriptive KPIs.
+- Additional historical revenue data would be required for accurate MRR growth, GRR, and NRR reporting.
+
+**Business Interpretation**
+
+An executive SaaS dashboard should clearly distinguish recorded revenue, actual active revenue, churn indicators, and realized revenue changes.
+
+**Recommendations**
+
+- Develop an executive dashboard with separate revenue, retention, engagement, and support sections.
+- Establish consistent reporting dates.
+- Add historical subscription revenue snapshots.
+- Introduce validated GRR, NRR, and realized churn metrics when the required data becomes available.
+
+---
+
+## 4. Strategic Business Recommendations
+
+### 1. Improve Revenue Movement Tracking
+
+**Observation:** Upgrade and downgrade flags are available, but historical revenue deltas are not.
+
+**Actions:**
+
+- Capture previous and new subscription MRR.
+- Track effective dates of plan changes.
+- Separate expansion, contraction, churn, and reactivation.
+- Build a monthly revenue movement bridge.
+
+**Expected Business Value:** More accurate subscription revenue reporting and better identification of expansion opportunities.
+
+### 2. Prioritize High-Value Churn Exposure
+
+**Observation:** $1,179,139 of summed recorded MRR is associated with churn-flagged subscriptions.
+
+**Actions:**
+
+- Review accounts with the highest churn-associated MRR.
+- Investigate high-exposure Cybersecurity accounts.
+- Combine revenue exposure with engagement and support indicators.
+- Validate actual churn outcomes before calculating revenue loss.
+
+**Expected Business Value:** Better prioritization of customer retention efforts.
+
+### 3. Develop Targeted Reactivation Strategies
+
+**Observation:** 61 of 600 churn events have reactivation flags.
+
+**Actions:**
+
+- Analyze reactivation by churn reason.
+- Investigate low reactivation among support-related churn events.
+- Track actual customer return dates.
+- Measure revenue recovered after reactivation.
+
+**Expected Business Value:** Improved understanding of potential win-back opportunities.
+
+### 4. Strengthen Cohort Retention Analytics
+
+**Observation:** Signup and subscription cohorts show different churn-flag percentages.
+
+**Actions:**
+
+- Compare cohorts at equal lifecycle ages.
+- Track active customer retention over time.
+- Analyze churn by acquisition channel and plan tier.
+- Build monthly retention curves.
+
+**Expected Business Value:** Better understanding of long-term customer behavior.
+
+### 5. Operationalize Customer Health Monitoring Carefully
+
+**Observation:** The exploratory health model identifies 15 High Attention and 224 Elevated Attention accounts.
+
+**Actions:**
+
+- Review the High Attention group.
+- Refine engagement and support thresholds.
+- Validate scores against future churn events.
+- Monitor changes in account health over time.
+
+**Expected Business Value:** A stronger foundation for proactive customer success workflows.
+
+---
+
+## 5. Data Quality Findings and Limitations
+
+### 5.1 Recorded MRR Is Not Point-in-Time Active MRR
+
+Summing `mrr_amount` across subscription records does not necessarily represent the company's active monthly recurring revenue at a specific date.
+
+Subscription start dates, end dates, overlapping records, and lifecycle status must be considered.
+
+### 5.2 Upgrade and Downgrade Flags Are Not Revenue Deltas
+
+An upgrade flag identifies a recorded subscription characteristic but does not reveal the monetary increase in MRR.
+
+Likewise, downgrade-associated MRR does not equal actual contraction MRR.
+
+### 5.3 Overlapping Movement Flags
+
+Twenty-three subscription records have both upgrade and downgrade flags.
+
+Their validity cannot be determined without event timing or source-system definitions.
+
+### 5.4 Churn Flags and Churn Events Differ
+
+Subscription churn flags, account churn flags, and churn event records represent different data structures.
+
+They should not be combined into a single churn rate without reconciliation.
+
+### 5.5 Reactivation Flags Do Not Establish Win-Back Timing
+
+The churn event table includes reactivation indicators, but the monthly analysis groups records by churn dates.
+
+Actual reactivation dates are required to measure time to return.
+
+### 5.6 Cohort Observation Periods Differ
+
+Customers acquired in 2023 have longer observation periods than customers acquired in late 2024.
+
+Direct comparisons of cumulative churn flags can therefore be misleading.
+
+### 5.7 Annualized Revenue Proxy Is Not Customer Lifetime Value
+
+Multiplying summed recorded MRR by 12 does not establish actual CLV or realized annual revenue.
+
+### 5.8 Customer Health Scores Are Exploratory
+
+The health scoring framework uses manually selected thresholds.
+
+It has not been statistically calibrated or validated as a predictive churn model.
+
+### 5.9 Missing Revenue History Limits SaaS Metrics
+
+Accurate calculations of the following require additional historical data:
+
+- Net Revenue Retention (NRR)
+- Gross Revenue Retention (GRR)
+- Realized expansion MRR
+- Realized contraction MRR
+- Reactivation MRR
+- Point-in-time active MRR growth
+
+### 5.10 Truncated Terminal Output
+
+Some SQL result columns were hidden by DuckDB's display-width settings.
+
+This documentation uses visible results and directly calculable values rather than inventing unavailable figures.
+
+---
+
+## 6. Final Day 5 Business Conclusions
+
+The Day 5 analysis demonstrates how SQL can be used to evaluate SaaS subscription revenue, customer lifecycle behavior, churn exposure, reactivation indicators, and account-level health.
+
+### Major Conclusions
+
+1. The dataset contains substantial recorded subscription revenue across 500 customer accounts.
+2. Upgrade-only subscription records outnumber downgrade-only records.
+3. Enterprise subscriptions represent the largest downgrade-associated MRR.
+4. Cybersecurity has the highest churn-associated MRR among the industries.
+5. Several individual accounts have significant concentrations of churn-associated subscription revenue.
+6. Reactivation flags appear in 10.17% of churn event records.
+7. Feature-related churn is the most frequent recorded reason.
+8. Support-related churn has the lowest reactivation-event percentage.
+9. Customer churn indicators differ across acquisition and subscription cohorts.
+10. Revenue is distributed across a relatively broad customer base.
+11. The customer health framework identifies accounts requiring further review.
+12. Historical revenue and lifecycle data are essential for production-grade SaaS retention metrics.
+
+---
+
+## 7. Final Project Summary – Days 1–5
+
+| Day | Focus | Queries |
+|---|---|---|
+| Day 1 | Data exploration, quality validation, and foundational SaaS analysis | 1–30 |
+| Day 2 | Subscription revenue and customer segmentation | 31–45 |
+| Day 3 | Customer churn, retention indicators, and churn-event reconciliation | 46–60 |
+| Day 4 | Feature engagement, adoption, and customer support analytics | 61–75 |
+| Day 5 | Advanced revenue, reactivation, cohorts, and customer health | 76–90 |
+
+### Final Deliverables
+
+- 90 DuckDB SQL queries
+- Five days of SaaS analytics
+- Revenue and subscription lifecycle analysis
+- Customer churn and reactivation analysis
+- Feature engagement and support analytics
+- Cohort and customer segmentation
+- Exploratory customer health scoring
+- Business recommendations and documented analytical limitations
+
+### Overall Project Conclusion
+
+This project demonstrates the application of SQL and DuckDB to analyze a multi-table SaaS dataset covering revenue, subscriptions, customers, product usage, support operations, and churn.
+
+The analysis identifies business opportunities involving revenue expansion, customer retention, product adoption, customer support, and proactive account management.
+
+It also highlights the importance of distinguishing descriptive subscription metrics from realized financial outcomes and validated predictive measures.
+
+**Project Status: Day 5 Complete — Queries 76–90.**
+
+**Overall SQL Project Status: 90 Queries Completed Across Five Days.**
+
+---
