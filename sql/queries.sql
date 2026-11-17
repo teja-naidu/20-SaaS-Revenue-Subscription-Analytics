@@ -1386,3 +1386,537 @@ ORDER BY
         ELSE 4
     END;
 
+
+-- ============================================================
+-- PROJECT 20: SaaS Revenue & Subscription Analytics
+-- DAY 5: Advanced Revenue, Retention & Lifecycle Analytics
+-- Queries 76–90
+-- ============================================================
+
+
+-- ============================================================
+-- QUERY 76: Subscription Revenue and Lifecycle Overview
+-- ============================================================
+
+SELECT
+    COUNT(*) AS total_subscription_records,
+    COUNT(DISTINCT account_id) AS total_accounts,
+    SUM(mrr_amount) AS total_recorded_mrr,
+    SUM(arr_amount) AS total_recorded_arr,
+    ROUND(AVG(mrr_amount), 2) AS avg_mrr_per_subscription,
+    SUM(CASE WHEN is_trial THEN 1 ELSE 0 END)
+        AS trial_subscriptions,
+    SUM(CASE WHEN NOT is_trial THEN 1 ELSE 0 END)
+        AS paid_subscriptions,
+    SUM(CASE WHEN upgrade_flag THEN 1 ELSE 0 END)
+        AS upgrade_flagged_records,
+    SUM(CASE WHEN downgrade_flag THEN 1 ELSE 0 END)
+        AS downgrade_flagged_records,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    SUM(CASE WHEN churn_flag THEN mrr_amount ELSE 0 END)
+        AS churn_flagged_mrr
+FROM subscriptions;
+
+
+-- ============================================================
+-- QUERY 77: Upgrade and Downgrade Revenue Exposure
+-- ============================================================
+
+WITH movement_flags AS (
+    SELECT
+        *,
+        CASE
+            WHEN upgrade_flag AND downgrade_flag
+                THEN 'Both Upgrade and Downgrade'
+            WHEN upgrade_flag
+                THEN 'Upgrade Only'
+            WHEN downgrade_flag
+                THEN 'Downgrade Only'
+            ELSE 'Neither'
+        END AS movement_category
+    FROM subscriptions
+)
+SELECT
+    movement_category,
+    COUNT(*) AS subscription_records,
+    COUNT(DISTINCT account_id) AS accounts,
+    SUM(mrr_amount) AS recorded_mrr,
+    ROUND(AVG(mrr_amount), 2) AS avg_recorded_mrr,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    ROUND(
+        100.0 * SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        / NULLIF(COUNT(*), 0), 2
+    ) AS churn_flag_percentage
+FROM movement_flags
+GROUP BY movement_category
+ORDER BY recorded_mrr DESC;
+
+
+-- ============================================================
+-- QUERY 78: Revenue Movement Flags by Plan Tier
+-- ============================================================
+
+SELECT
+    plan_tier,
+    COUNT(*) AS subscription_records,
+    SUM(mrr_amount) AS recorded_mrr,
+    SUM(CASE WHEN upgrade_flag THEN 1 ELSE 0 END)
+        AS upgrade_flagged_records,
+    SUM(CASE WHEN downgrade_flag THEN 1 ELSE 0 END)
+        AS downgrade_flagged_records,
+    SUM(CASE WHEN upgrade_flag THEN mrr_amount ELSE 0 END)
+        AS upgrade_associated_mrr,
+    SUM(CASE WHEN downgrade_flag THEN mrr_amount ELSE 0 END)
+        AS downgrade_associated_mrr,
+    ROUND(
+        100.0 * SUM(CASE WHEN upgrade_flag THEN 1 ELSE 0 END)
+        / NULLIF(COUNT(*), 0), 2
+    ) AS upgrade_flag_percentage,
+    ROUND(
+        100.0 * SUM(CASE WHEN downgrade_flag THEN 1 ELSE 0 END)
+        / NULLIF(COUNT(*), 0), 2
+    ) AS downgrade_flag_percentage
+FROM subscriptions
+GROUP BY plan_tier
+ORDER BY recorded_mrr DESC;
+
+
+-- ============================================================
+-- QUERY 79: Revenue Movement Flags by Industry
+-- ============================================================
+
+SELECT
+    a.industry,
+    COUNT(DISTINCT a.account_id) AS accounts,
+    COUNT(s.subscription_id) AS subscription_records,
+    SUM(s.mrr_amount) AS recorded_mrr,
+    SUM(CASE WHEN s.upgrade_flag THEN 1 ELSE 0 END)
+        AS upgrade_flagged_records,
+    SUM(CASE WHEN s.downgrade_flag THEN 1 ELSE 0 END)
+        AS downgrade_flagged_records,
+    SUM(CASE WHEN s.churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    SUM(CASE WHEN s.churn_flag THEN s.mrr_amount ELSE 0 END)
+        AS churn_flagged_mrr
+FROM accounts a
+JOIN subscriptions s
+    ON a.account_id = s.account_id
+GROUP BY a.industry
+ORDER BY recorded_mrr DESC;
+
+
+-- ============================================================
+-- QUERY 80: Customer Expansion and Contraction Flag Patterns
+-- ============================================================
+
+WITH account_movements AS (
+    SELECT
+        account_id,
+        COUNT(*) AS subscription_records,
+        SUM(mrr_amount) AS recorded_mrr,
+        SUM(CASE WHEN upgrade_flag THEN 1 ELSE 0 END)
+            AS upgrade_records,
+        SUM(CASE WHEN downgrade_flag THEN 1 ELSE 0 END)
+            AS downgrade_records
+    FROM subscriptions
+    GROUP BY account_id
+)
+SELECT
+    CASE
+        WHEN upgrade_records > 0 AND downgrade_records > 0
+            THEN 'Both Movement Types'
+        WHEN upgrade_records > 0
+            THEN 'Upgrade Flags Only'
+        WHEN downgrade_records > 0
+            THEN 'Downgrade Flags Only'
+        ELSE 'No Movement Flags'
+    END AS account_movement_segment,
+    COUNT(*) AS accounts,
+    SUM(subscription_records) AS subscription_records,
+    SUM(recorded_mrr) AS recorded_mrr,
+    ROUND(AVG(recorded_mrr), 2) AS avg_account_recorded_mrr
+FROM account_movements
+GROUP BY 1
+ORDER BY accounts DESC;
+
+
+-- ============================================================
+-- QUERY 81: Account Revenue Exposure and Subscription Churn
+-- ============================================================
+
+WITH account_revenue AS (
+    SELECT
+        account_id,
+        COUNT(*) AS subscription_records,
+        SUM(mrr_amount) AS recorded_mrr,
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+            AS churn_flagged_records,
+        SUM(CASE WHEN churn_flag THEN mrr_amount ELSE 0 END)
+            AS churn_flagged_mrr
+    FROM subscriptions
+    GROUP BY account_id
+)
+SELECT
+    a.account_id,
+    a.account_name,
+    a.industry,
+    a.country,
+    r.subscription_records,
+    r.recorded_mrr,
+    r.churn_flagged_records,
+    r.churn_flagged_mrr,
+    ROUND(
+        100.0 * r.churn_flagged_mrr
+        / NULLIF(r.recorded_mrr, 0), 2
+    ) AS churn_associated_mrr_percentage
+FROM account_revenue r
+JOIN accounts a
+    ON r.account_id = a.account_id
+ORDER BY r.churn_flagged_mrr DESC, r.recorded_mrr DESC
+LIMIT 20;
+
+
+-- ============================================================
+-- QUERY 82: Churn Event and Reactivation Overview
+-- ============================================================
+
+SELECT
+    COUNT(*) AS total_churn_events,
+    COUNT(DISTINCT churn_event_id) AS unique_churn_events,
+    COUNT(DISTINCT account_id) AS accounts_with_churn_events,
+    SUM(CASE WHEN is_reactivation THEN 1 ELSE 0 END)
+        AS reactivation_flagged_events,
+    SUM(CASE WHEN NOT is_reactivation THEN 1 ELSE 0 END)
+        AS non_reactivation_events,
+    SUM(CASE WHEN is_reactivation IS NULL THEN 1 ELSE 0 END)
+        AS missing_reactivation_flags,
+    ROUND(
+        100.0 * SUM(CASE WHEN is_reactivation THEN 1 ELSE 0 END)
+        / NULLIF(COUNT(*), 0), 2
+    ) AS reactivation_event_percentage
+FROM churn_events;
+
+
+-- ============================================================
+-- QUERY 83: Reactivation Trends by Churn Event Month
+-- ============================================================
+
+SELECT
+    DATE_TRUNC('month', churn_date)::DATE AS event_month,
+    COUNT(*) AS churn_events,
+    SUM(CASE WHEN is_reactivation THEN 1 ELSE 0 END)
+        AS reactivation_flagged_events,
+    COUNT(DISTINCT CASE WHEN is_reactivation THEN account_id END)
+        AS accounts_with_reactivation_flag,
+    ROUND(
+        100.0 * SUM(CASE WHEN is_reactivation THEN 1 ELSE 0 END)
+        / NULLIF(COUNT(*), 0), 2
+    ) AS reactivation_event_percentage
+FROM churn_events
+GROUP BY 1
+ORDER BY 1;
+
+
+-- ============================================================
+-- QUERY 84: Reactivation by Churn Reason
+-- ============================================================
+
+SELECT
+    reason_code,
+    COUNT(*) AS churn_events,
+    COUNT(DISTINCT account_id) AS affected_accounts,
+    SUM(CASE WHEN is_reactivation THEN 1 ELSE 0 END)
+        AS reactivation_flagged_events,
+    ROUND(
+        100.0 * SUM(CASE WHEN is_reactivation THEN 1 ELSE 0 END)
+        / NULLIF(COUNT(*), 0), 2
+    ) AS reactivation_event_percentage,
+    SUM(CASE WHEN preceding_downgrade_flag THEN 1 ELSE 0 END)
+        AS events_with_preceding_downgrade
+FROM churn_events
+GROUP BY reason_code
+ORDER BY churn_events DESC;
+
+
+-- ============================================================
+-- QUERY 85: Customer Signup Cohort and Churn Flag Analysis
+-- ============================================================
+
+SELECT
+    DATE_TRUNC('month', signup_date)::DATE AS signup_cohort,
+    COUNT(*) AS customer_accounts,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_accounts,
+    ROUND(
+        100.0 * SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        / NULLIF(COUNT(*), 0), 2
+    ) AS account_churn_flag_percentage,
+    MIN(signup_date) AS first_signup_date,
+    MAX(signup_date) AS last_signup_date
+FROM accounts
+GROUP BY 1
+ORDER BY 1;
+
+
+-- ============================================================
+-- QUERY 86: Subscription Start-Year Cohort Analysis
+-- ============================================================
+
+SELECT
+    EXTRACT(YEAR FROM start_date) AS start_year,
+    COUNT(*) AS subscription_records,
+    COUNT(DISTINCT account_id) AS distinct_accounts,
+    SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        AS churn_flagged_records,
+    ROUND(
+        100.0 * SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+        / NULLIF(COUNT(*), 0), 2
+    ) AS churn_flag_percentage,
+    SUM(mrr_amount) AS recorded_mrr,
+    SUM(CASE WHEN churn_flag THEN mrr_amount ELSE 0 END)
+        AS churn_flagged_mrr
+FROM subscriptions
+GROUP BY 1
+ORDER BY 1;
+
+
+-- ============================================================
+-- QUERY 87: Revenue Concentration by Account Ranking
+-- ============================================================
+
+WITH account_revenue AS (
+    SELECT
+        account_id,
+        SUM(mrr_amount) AS recorded_mrr
+    FROM subscriptions
+    GROUP BY account_id
+),
+ranked_accounts AS (
+    SELECT
+        account_id,
+        recorded_mrr,
+        ROW_NUMBER() OVER (
+            ORDER BY recorded_mrr DESC, account_id
+        ) AS revenue_rank
+    FROM account_revenue
+)
+SELECT
+    CASE
+        WHEN revenue_rank <= 10 THEN 'Top 10'
+        WHEN revenue_rank <= 50 THEN 'Rank 11–50'
+        WHEN revenue_rank <= 100 THEN 'Rank 51–100'
+        ELSE 'Remaining Accounts'
+    END AS revenue_segment,
+    COUNT(*) AS accounts,
+    SUM(recorded_mrr) AS recorded_mrr,
+    ROUND(
+        100.0 * SUM(recorded_mrr)
+        / NULLIF((SELECT SUM(recorded_mrr) FROM account_revenue), 0),
+        2
+    ) AS share_of_total_recorded_mrr
+FROM ranked_accounts
+GROUP BY 1
+ORDER BY MIN(revenue_rank);
+
+
+-- ============================================================
+-- QUERY 88: Customer Lifetime Value Proxy
+-- ============================================================
+
+WITH account_summary AS (
+    SELECT
+        a.account_id,
+        a.account_name,
+        a.industry,
+        COUNT(s.subscription_id) AS subscription_records,
+        SUM(s.mrr_amount) AS recorded_mrr,
+        MIN(s.start_date) AS first_subscription_date,
+        MAX(s.start_date) AS latest_subscription_start,
+        SUM(CASE WHEN s.churn_flag THEN 1 ELSE 0 END)
+            AS churn_flagged_records
+    FROM accounts a
+    JOIN subscriptions s
+        ON a.account_id = s.account_id
+    GROUP BY a.account_id, a.account_name, a.industry
+)
+SELECT
+    account_id,
+    account_name,
+    industry,
+    subscription_records,
+    recorded_mrr,
+    recorded_mrr * 12 AS annualized_recorded_mrr_proxy,
+    first_subscription_date,
+    latest_subscription_start,
+    churn_flagged_records
+FROM account_summary
+ORDER BY annualized_recorded_mrr_proxy DESC
+LIMIT 20;
+
+
+-- ============================================================
+-- QUERY 89: Multi-Factor Customer Health Assessment
+-- ============================================================
+
+WITH subscription_metrics AS (
+    SELECT
+        account_id,
+        COUNT(*) AS subscription_records,
+        SUM(mrr_amount) AS recorded_mrr,
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+            AS churn_flagged_records
+    FROM subscriptions
+    GROUP BY account_id
+),
+engagement_metrics AS (
+    SELECT
+        s.account_id,
+        COALESCE(SUM(f.usage_count), 0) AS total_feature_uses,
+        COALESCE(SUM(f.error_count), 0) AS total_feature_errors
+    FROM subscriptions s
+    LEFT JOIN feature_usage f
+        ON s.subscription_id = f.subscription_id
+    GROUP BY s.account_id
+),
+support_metrics AS (
+    SELECT
+        account_id,
+        COUNT(*) AS support_tickets,
+        SUM(CASE WHEN escalation_flag THEN 1 ELSE 0 END)
+            AS escalations,
+        AVG(satisfaction_score) AS avg_satisfaction
+    FROM support_tickets
+    GROUP BY account_id
+),
+account_health AS (
+    SELECT
+        a.account_id,
+        a.account_name,
+        a.industry,
+        a.churn_flag AS account_churn_flag,
+        COALESCE(s.subscription_records, 0) AS subscription_records,
+        COALESCE(s.recorded_mrr, 0) AS recorded_mrr,
+        COALESCE(s.churn_flagged_records, 0) AS churn_flagged_records,
+        COALESCE(e.total_feature_uses, 0) AS total_feature_uses,
+        COALESCE(e.total_feature_errors, 0) AS total_feature_errors,
+        COALESCE(t.support_tickets, 0) AS support_tickets,
+        COALESCE(t.escalations, 0) AS escalations,
+        t.avg_satisfaction
+    FROM accounts a
+    LEFT JOIN subscription_metrics s
+        ON a.account_id = s.account_id
+    LEFT JOIN engagement_metrics e
+        ON a.account_id = e.account_id
+    LEFT JOIN support_metrics t
+        ON a.account_id = t.account_id
+),
+scored_accounts AS (
+    SELECT
+        *,
+        CASE
+            WHEN total_feature_uses < 250 THEN 2
+            WHEN total_feature_uses < 500 THEN 1
+            ELSE 0
+        END
+        + CASE
+            WHEN escalations >= 2 THEN 2
+            WHEN escalations = 1 THEN 1
+            ELSE 0
+        END
+        + CASE
+            WHEN avg_satisfaction < 3 THEN 2
+            WHEN avg_satisfaction < 4 THEN 1
+            ELSE 0
+        END
+        + CASE
+            WHEN churn_flagged_records > 0 THEN 2
+            ELSE 0
+        END AS health_attention_score
+    FROM account_health
+)
+SELECT
+    CASE
+        WHEN health_attention_score >= 5 THEN 'High Attention'
+        WHEN health_attention_score >= 3 THEN 'Elevated Attention'
+        WHEN health_attention_score >= 1 THEN 'Moderate Attention'
+        ELSE 'Standard Monitoring'
+    END AS health_segment,
+    COUNT(*) AS accounts,
+    SUM(CASE WHEN account_churn_flag THEN 1 ELSE 0 END)
+        AS account_churn_flagged,
+    ROUND(AVG(recorded_mrr), 2) AS avg_recorded_mrr,
+    ROUND(AVG(total_feature_uses), 2) AS avg_feature_uses,
+    ROUND(AVG(support_tickets), 2) AS avg_support_tickets,
+    ROUND(AVG(health_attention_score), 2)
+        AS avg_attention_score
+FROM scored_accounts
+GROUP BY 1
+ORDER BY
+    CASE health_segment
+        WHEN 'High Attention' THEN 1
+        WHEN 'Elevated Attention' THEN 2
+        WHEN 'Moderate Attention' THEN 3
+        ELSE 4
+    END;
+
+
+-- ============================================================
+-- QUERY 90: Executive SaaS Performance Scorecard
+-- ============================================================
+
+WITH subscription_kpis AS (
+    SELECT
+        COUNT(*) AS subscription_records,
+        COUNT(DISTINCT account_id) AS accounts_with_subscriptions,
+        SUM(mrr_amount) AS recorded_mrr,
+        SUM(arr_amount) AS recorded_arr,
+        SUM(CASE WHEN churn_flag THEN 1 ELSE 0 END)
+            AS churn_flagged_records,
+        SUM(CASE WHEN upgrade_flag THEN 1 ELSE 0 END)
+            AS upgrade_flagged_records,
+        SUM(CASE WHEN downgrade_flag THEN 1 ELSE 0 END)
+            AS downgrade_flagged_records
+    FROM subscriptions
+),
+usage_kpis AS (
+    SELECT
+        COUNT(*) AS usage_records,
+        COUNT(DISTINCT subscription_id) AS subscriptions_with_usage,
+        SUM(usage_count) AS total_feature_uses,
+        SUM(error_count) AS total_feature_errors
+    FROM feature_usage
+),
+support_kpis AS (
+    SELECT
+        COUNT(*) AS support_tickets,
+        SUM(CASE WHEN escalation_flag THEN 1 ELSE 0 END)
+            AS escalated_tickets,
+        ROUND(AVG(resolution_time_hours), 2)
+            AS avg_resolution_hours,
+        ROUND(AVG(satisfaction_score), 2)
+            AS avg_satisfaction
+    FROM support_tickets
+),
+churn_kpis AS (
+    SELECT
+        COUNT(*) AS churn_events,
+        COUNT(DISTINCT account_id) AS accounts_with_churn_events,
+        SUM(CASE WHEN is_reactivation THEN 1 ELSE 0 END)
+            AS reactivation_flagged_events
+    FROM churn_events
+)
+SELECT
+    s.*,
+    ROUND(
+        100.0 * s.churn_flagged_records
+        / NULLIF(s.subscription_records, 0), 2
+    ) AS subscription_churn_flag_percentage,
+    u.*,
+    t.*,
+    c.*
+FROM subscription_kpis s
+CROSS JOIN usage_kpis u
+CROSS JOIN support_kpis t
+CROSS JOIN churn_kpis c;
